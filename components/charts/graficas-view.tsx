@@ -265,7 +265,7 @@ export function GraficasView({
                           </a>
                         )}
                       </div>
-                      <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{c.summary}</p>
+                      <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)", whiteSpace: "pre-line" }}>{c.summary}</p>
                     </div>
                   </div>
                 ))}
