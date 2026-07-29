@@ -18,6 +18,7 @@ import { CHART_SPECS, vistaToGranularity } from "./chart-specs";
 import { moonPhaseGlyph, moonPhaseLabel, type MoonPhaseGlyph } from "@/lib/moon";
 
 const RANGOS = ["7", "30", "90"] as const;
+const REFRESH_MS = 30_000;
 const VISTAS_CLIMA = ["hora", "dia", "7dias"] as const;
 const VISTA_CLIMA_LABEL: Record<VistaClima, string> = {
   hora: "Hora",
@@ -38,45 +39,73 @@ function fasesLuna() {
 
 export function GraficasView({
   initialHistory,
-  snapshot,
+  snapshot: initialSnapshot,
 }: {
   initialHistory: HistoryResponse;
   snapshot: DashboardSnapshot | null;
 }) {
   const [rango, setRango] = useState<(typeof RANGOS)[number]>("30");
   const [history, setHistory] = useState(initialHistory);
+  const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [climaVista, setClimaVista] = useState<VistaClima>("hora");
 
   useEffect(() => {
-    if (rango === "30" && history === initialHistory) return;
     let cancelled = false;
-    // ponytail: setState-in-effect es el patrón estándar de fetch (react.dev
-    // "Fetching Data") — loading no puede derivarse del render, depende de un
-    // fetch que arranca aquí. Ya tiene cleanup con `cancelled`.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setFetchError(false);
-    fetch(`/api/data/history?days=${rango}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((data: HistoryResponse) => {
-        if (!cancelled) setHistory(data);
-      })
-      .catch(() => {
-        if (!cancelled) setFetchError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+
+    function refreshHistory(showLoading: boolean) {
+      // ponytail: setState-in-effect es el patrón estándar de fetch (react.dev
+      // "Fetching Data") — loading no puede derivarse del render, depende de un
+      // fetch que arranca aquí. Ya tiene cleanup con `cancelled`.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (showLoading) setLoading(true);
+      setFetchError(false);
+      // no-store: esta vista se auto-refresca en vivo, no debe servir una
+      // respuesta cacheada del navegador entre polls.
+      fetch(`/api/data/history?days=${rango}`, { cache: "no-store" })
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then((data: HistoryResponse) => {
+          if (!cancelled) setHistory(data);
+        })
+        .catch(() => {
+          if (!cancelled) setFetchError(true);
+        })
+        .finally(() => {
+          if (!cancelled && showLoading) setLoading(false);
+        });
+    }
+
+    // Al montar con el rango inicial ya tenemos initialHistory del server — no repetir esa carga.
+    if (!(rango === "30" && history === initialHistory)) refreshHistory(true);
+    const id = setInterval(() => refreshHistory(false), REFRESH_MS);
     return () => {
       cancelled = true;
+      clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rango]);
+
+  // Resumen de sensores (Calidad del agua / Alertas de ciclón) — vive fuera de /data/history,
+  // se refresca aparte en el mismo intervalo para que la página nunca requiera recargar.
+  useEffect(() => {
+    let cancelled = false;
+    const id = setInterval(() => {
+      fetch(`/api/data/latest`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: DashboardSnapshot | null) => {
+          if (!cancelled && data) setSnapshot(data);
+        })
+        .catch(() => {});
+    }, REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   // Cada spec produce sus series + granularidad de una vez — evita 7 useMemo casi idénticos.
   const chartData = useMemo(
