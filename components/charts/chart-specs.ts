@@ -4,6 +4,7 @@ import type { ChartGranularity } from "./time-format";
 import {
   type VistaClima,
   weatherToVientoMulti,
+  weatherToRafagaMulti,
   weatherToTempMulti,
   weatherToHumedadMulti,
   satelliteToTempSeries,
@@ -62,6 +63,18 @@ export const CHART_SPECS: ChartSpec[] = [
     yMin: 0,
     area: true,
     getSeries: (history, vista) => weatherToVientoMulti(history.weather, vista),
+  },
+  {
+    id: "rafaga-viento",
+    title: "Ráfagas de viento",
+    source: "Open-Meteo — Tasajera / CGSM",
+    unit: "km/h",
+    span: 6,
+    motif: "cana",
+    granularity: "hour",
+    usesVista: true,
+    yMin: 0,
+    getSeries: (history, vista) => weatherToRafagaMulti(history.weather, vista),
   },
   {
     id: "temp-ambiental",

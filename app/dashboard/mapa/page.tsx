@@ -15,7 +15,6 @@ export default async function MapaPage() {
   } catch {
     return <BackendError title="Mapa interactivo" />;
   }
-  const sedimentacion = zonas.map((z) => z.polygon);
   const estaciones = historyToEstaciones(history);
-  return <MapaViewLoader puntos={puntos} especies={especies} sedimentacion={sedimentacion} estaciones={estaciones} />;
+  return <MapaViewLoader puntos={puntos} especies={especies} sedimentacion={zonas} estaciones={estaciones} />;
 }
