@@ -206,3 +206,75 @@ export function BigStat({ value, unit, size = 44 }: { value: ReactNode; unit?: s
     </div>
   );
 }
+
+// Grid de tarjetas "icon + label + value" — mismo patrón que antes vivía inline
+// en sistema/page.tsx (bot_metricas), promovido para reusarse en Gráficas/Sistema.
+export function MetricGrid({ children }: { children: ReactNode }) {
+  return <div className="cr-metric-grid">{children}</div>;
+}
+
+export function MetricTile({
+  label,
+  value,
+  unit,
+  sub,
+  trend,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  unit?: string;
+  sub?: ReactNode;
+  trend?: ReactNode;
+}) {
+  return (
+    <div className="cr-metric">
+      <span
+        className="mono"
+        style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}
+      >
+        {label}
+      </span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "6px 0 2px" }}>
+        <span className="serif" style={{ fontSize: 34, fontWeight: 600, color: "var(--ink)", lineHeight: 1 }}>
+          {value}
+        </span>
+        {unit && (
+          <span className="mono" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+            {unit}
+          </span>
+        )}
+      </div>
+      {(sub || trend) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {sub && <span style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{sub}</span>}
+          {trend}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TREND_ARROW: Record<"subiendo" | "bajando" | "estable", string> = {
+  subiendo: "▲",
+  bajando: "▼",
+  estable: "—",
+};
+
+/** Insignia de tendencia (24h/7d) — dirección no implica bueno/malo, solo movimiento. */
+export function TrendBadge({
+  direccion,
+  delta,
+  unit = "",
+}: {
+  direccion: "subiendo" | "bajando" | "estable" | null;
+  delta?: number | null;
+  unit?: string;
+}) {
+  if (!direccion) return null;
+  const signo = delta != null && delta > 0 ? "+" : "";
+  return (
+    <MonoChip tone={direccion === "bajando" ? "teal" : "neutral"}>
+      {TREND_ARROW[direccion]} {delta != null ? `${signo}${delta}${unit}` : direccion}
+    </MonoChip>
+  );
+}
