@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { normalizeTone, semaphoreToEventos, catchToSeries, toCorrelacion } from "./adapters";
-import type { SemaphoreHistoryPoint } from "@/lib/api";
+import { normalizeTone, semaphoreToEventos, catchToSeries, toCorrelacion, weatherToRafagaMulti } from "./adapters";
+import type { SemaphoreHistoryPoint, WeatherHistoryPoint } from "@/lib/api";
 
 describe("normalizeTone", () => {
   it("maps English and Spanish backend colors to the same Spanish tone", () => {
@@ -48,6 +48,33 @@ describe("semaphoreToEventos", () => {
 describe("catchToSeries", () => {
   it("maps date/cantidad_indice straight to t/v", () => {
     expect(catchToSeries([{ date: "2026-07-01", cantidad_indice: 5 }])).toEqual([{ t: "2026-07-01", v: 5 }]);
+  });
+});
+
+function weatherRow(estacion: string, timestamp: string, wind_gust_kmh: number | null): WeatherHistoryPoint {
+  return {
+    timestamp,
+    estacion,
+    temperature_c: null,
+    humidity_pct: null,
+    wind_speed_kmh: null,
+    wind_gust_kmh,
+    precipitation_mm: null,
+  };
+}
+
+describe("weatherToRafagaMulti", () => {
+  it("splits gust readings per estación and drops nulls, in hourly view", () => {
+    const rows = [
+      weatherRow("CGSM", "2026-07-01T00:00:00Z", 12),
+      weatherRow("CGSM", "2026-07-01T01:00:00Z", null),
+      weatherRow("Tasajera", "2026-07-01T00:00:00Z", 18),
+    ];
+    const result = weatherToRafagaMulti(rows, "hora");
+    expect(result).toEqual([
+      { label: "Tasajera", color: "var(--verde)", data: [{ t: "2026-07-01T00:00:00Z", v: 18 }] },
+      { label: "CGSM", color: "var(--teal)", data: [{ t: "2026-07-01T00:00:00Z", v: 12 }] },
+    ]);
   });
 });
 

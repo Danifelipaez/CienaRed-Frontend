@@ -30,7 +30,7 @@ function promedioPorDia(rows: { timestamp: string; v: number }[]): { dia: string
 /** Serie por estación (Tasajera/CGSM) para una variable de `weather`, en la granularidad pedida. */
 function weatherMultiSeries(
   rows: WeatherHistoryPoint[],
-  valueKey: "temperature_c" | "humidity_pct" | "wind_speed_kmh",
+  valueKey: "temperature_c" | "humidity_pct" | "wind_speed_kmh" | "wind_gust_kmh",
   vista: VistaClima
 ): MultiSeries[] {
   return ESTACIONES_CLIMA.map((estacion) => {
@@ -60,6 +60,10 @@ function weatherMultiSeries(
 
 export function weatherToVientoMulti(rows: WeatherHistoryPoint[], vista: VistaClima): MultiSeries[] {
   return weatherMultiSeries(rows, "wind_speed_kmh", vista);
+}
+
+export function weatherToRafagaMulti(rows: WeatherHistoryPoint[], vista: VistaClima): MultiSeries[] {
+  return weatherMultiSeries(rows, "wind_gust_kmh", vista);
 }
 
 export function weatherToTempMulti(rows: WeatherHistoryPoint[], vista: VistaClima): MultiSeries[] {
