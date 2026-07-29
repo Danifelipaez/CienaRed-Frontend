@@ -46,6 +46,10 @@ export function GraficasView({ initialHistory }: { initialHistory: HistoryRespon
   useEffect(() => {
     if (rango === "30" && history === initialHistory) return;
     let cancelled = false;
+    // ponytail: setState-in-effect es el patrón estándar de fetch (react.dev
+    // "Fetching Data") — loading no puede derivarse del render, depende de un
+    // fetch que arranca aquí. Ya tiene cleanup con `cancelled`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setFetchError(false);
     fetch(`/api/data/history?days=${rango}`)

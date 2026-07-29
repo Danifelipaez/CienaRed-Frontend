@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CienaRed Frontend
 
-## Getting Started
+Dashboard Next.js (App Router) para CienaRed: mapa de puntos de pesca, gráficas/históricos ambientales, "Pregunta a la IA" y estado del sistema. Consume un backend FastAPI aparte.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Ninguna es obligatoria para levantar en local (hay defaults), pero para hablar con un backend real:
 
-## Learn More
+| Variable | Requerida | Descripción |
+|---|---|---|
+| `BACKEND_URL` | No (default `http://localhost:8000`) | URL base del backend FastAPI. Solo se lee server-side (Server Components y Route Handlers). |
+| `ADMIN_API_KEY` | Sí, para las rutas admin | Clave `X-Admin-Key` del backend. La usan `app/api/admin/*` (ai/ask, ai/history, system-status) vía `backendFetchAdmin()`. Nunca se expone al cliente. Sin ella, esas rutas fallan con error explícito. |
 
-To learn more about Next.js, take a look at the following resources:
+Ponlas en `.env.local` (no se versiona).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Arquitectura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Lecturas públicas (puntos, especies, sedimentación, históricos, alertas) se piden directo desde Server Components — ver [lib/api.ts](lib/api.ts).
+- Rutas que requieren `X-Admin-Key` pasan por Route Handlers en `app/api/admin/*`, que leen la clave server-side y nunca la exponen al cliente.
+- `output: "standalone"` en [next.config.ts](next.config.ts) es para el build de Docker (servidor universitario), no afecta al deploy en Vercel.
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Dos targets, independientes:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Vercel** (proyecto `ciena-net-dashboard`) — deploy normal de Next.js, configura `BACKEND_URL` y `ADMIN_API_KEY` en las env vars del proyecto.
+- **Servidor universitario (Docker)** — usa el [Dockerfile](Dockerfile), build standalone. Pasa las mismas env vars al contenedor en runtime.
+
+## Scripts
+
+```bash
+npm run dev      # servidor de desarrollo
+npm run build    # build de producción
+npm run start    # sirve el build de producción
+npm run lint     # ESLint
+npm test         # pruebas unitarias (Vitest)
+```
