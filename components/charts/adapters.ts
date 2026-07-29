@@ -5,6 +5,7 @@ import type {
   SemaphoreHistoryPoint,
   IdeamPrecipitacionPoint,
   IdeamNivelPoint,
+  WaterHistoryPoint,
 } from "@/lib/api";
 import type { SeriesPoint, MultiSeries } from "@/components/ui/charts";
 import { formatDate } from "./time-format";
@@ -27,6 +28,19 @@ function promedioPorDia(rows: { timestamp: string; v: number }[]): { dia: string
   return [...porDia.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([dia, vals]) => ({ dia, promedio: avg(vals) }));
 }
 
+/** Agrupa puntos crudos en horas/días/semanas según la vista pedida. */
+function bucketByVista(propias: { timestamp: string; v: number }[], vista: VistaClima): SeriesPoint[] {
+  if (vista === "hora") return propias.map((r) => ({ t: r.timestamp, v: r.v }));
+  const dias = promedioPorDia(propias);
+  if (vista === "dia") return dias.map(({ dia, promedio }) => ({ t: dia, v: promedio }));
+  const semanas: SeriesPoint[] = [];
+  for (let i = 0; i < dias.length; i += 7) {
+    const semana = dias.slice(i, i + 7);
+    semanas.push({ t: semana[0].dia, v: avg(semana.map((d) => d.promedio)) });
+  }
+  return semanas;
+}
+
 /** Serie por estación (Tasajera/CGSM) para una variable de `weather`, en la granularidad pedida. */
 function weatherMultiSeries(
   rows: WeatherHistoryPoint[],
@@ -37,25 +51,18 @@ function weatherMultiSeries(
     const propias = rows
       .filter((r) => r.estacion === estacion && r[valueKey] != null)
       .map((r) => ({ timestamp: r.timestamp, v: r[valueKey]! }));
-
-    let data: SeriesPoint[];
-    if (vista === "hora") {
-      data = propias.map((r) => ({ t: r.timestamp, v: r.v }));
-    } else {
-      const dias = promedioPorDia(propias);
-      if (vista === "dia") {
-        data = dias.map(({ dia, promedio }) => ({ t: dia, v: promedio }));
-      } else {
-        const semanas: SeriesPoint[] = [];
-        for (let i = 0; i < dias.length; i += 7) {
-          const semana = dias.slice(i, i + 7);
-          semanas.push({ t: semana[0].dia, v: avg(semana.map((d) => d.promedio)) });
-        }
-        data = semanas;
-      }
-    }
-    return { label: estacion, color: CLIMA_COLORS[estacion], data };
+    return { label: estacion, color: CLIMA_COLORS[estacion], data: bucketByVista(propias, vista) };
   });
+}
+
+/** Serie única de calidad del agua (ya promediada entre boyas activas por hora en el backend). */
+export function waterToSeries(
+  rows: WaterHistoryPoint[],
+  valueKey: "ph" | "temperature_c" | "conductivity_mscm",
+  vista: VistaClima
+): SeriesPoint[] {
+  const propias = rows.filter((r) => r[valueKey] != null).map((r) => ({ timestamp: r.timestamp, v: r[valueKey]! }));
+  return bucketByVista(propias, vista);
 }
 
 export function weatherToVientoMulti(rows: WeatherHistoryPoint[], vista: VistaClima): MultiSeries[] {

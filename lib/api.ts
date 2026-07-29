@@ -116,11 +116,19 @@ export interface IdeamNivelPoint {
   nivel_m: number;
 }
 
+export interface WaterHistoryPoint {
+  timestamp: string;
+  ph: number | null;
+  temperature_c: number | null;
+  conductivity_mscm: number | null;
+}
+
 export interface HistoryResponse {
   weather: WeatherHistoryPoint[];
   semaphore: SemaphoreHistoryPoint[];
   satellite: SatelliteHistoryPoint[];
   captura: CatchHistoryPoint[];
+  water: WaterHistoryPoint[];
   ideam_precipitacion: IdeamPrecipitacionPoint[];
   ideam_nivel_rio: IdeamNivelPoint[];
 }
