@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Botanical, SealLogo } from "@/components/ui/botanical";
-import { StatusDot } from "@/components/ui/primitives";
-import type { ApiStatus } from "@/lib/api";
+import { Pill, StatusDot } from "@/components/ui/primitives";
+import type { ApiStatus, CycloneAlert } from "@/lib/api";
 
 const NAV = [
   { id: "mapa", icon: "map", label: "Mapa" },
@@ -40,9 +40,11 @@ function toggleTheme() {
 
 export function DashboardShell({
   apis,
+  cycloneAlerts = [],
   children,
 }: {
   apis: ApiStatus[];
+  cycloneAlerts?: CycloneAlert[];
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -113,6 +115,13 @@ export function DashboardShell({
             </div>
           </div>
           <div className="cr-sys">
+            {cycloneAlerts.length > 0 && (
+              <Pill tone="rojo" dot pulse>
+                <span title={cycloneAlerts.map((c) => c.title).join(" · ")}>
+                  {cycloneAlerts.length === 1 ? "1 alerta de ciclón" : `${cycloneAlerts.length} alertas de ciclón`}
+                </span>
+              </Pill>
+            )}
             {apis.map((a) => (
               <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${a.actualizado}`}>
                 <StatusDot tone={apiTone(a.estado)} size={8} pulse={a.estado !== "ok"} />

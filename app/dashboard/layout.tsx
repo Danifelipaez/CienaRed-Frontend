@@ -1,5 +1,12 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { backendFetchAdmin, READ_REVALIDATE, type ApiStatus, type SystemStatusResponse } from "@/lib/api";
+import {
+  backendFetchAdmin,
+  getLatestSnapshot,
+  READ_REVALIDATE,
+  type ApiStatus,
+  type CycloneAlert,
+  type SystemStatusResponse,
+} from "@/lib/api";
 
 // Todo /dashboard/* depende de datos en vivo del backend (puntos, semáforo, IA,
 // estado del sistema) — nunca debe congelarse como HTML estático en build time,
@@ -17,7 +24,20 @@ async function getApiStatuses(): Promise<ApiStatus[]> {
   }
 }
 
+async function getCycloneAlerts(): Promise<CycloneAlert[]> {
+  try {
+    const snapshot = await getLatestSnapshot();
+    return snapshot.cyclone_alerts;
+  } catch {
+    return [];
+  }
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const apis = await getApiStatuses();
-  return <DashboardShell apis={apis}>{children}</DashboardShell>;
+  const [apis, cycloneAlerts] = await Promise.all([getApiStatuses(), getCycloneAlerts()]);
+  return (
+    <DashboardShell apis={apis} cycloneAlerts={cycloneAlerts}>
+      {children}
+    </DashboardShell>
+  );
 }

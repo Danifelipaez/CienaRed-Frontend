@@ -8,6 +8,7 @@ export interface EstacionSnapshot {
   tempAmbiental: number | null;
   humedad: number | null;
   viento: number | null;
+  rafaga: number | null;
   precipitacion: number | null;
   nivelRio: number | null;
 }
@@ -50,6 +51,7 @@ export function historyToEstaciones(history: HistoryResponse): EstacionSnapshot[
         tempAmbiental: w?.temperature_c ?? null,
         humedad: w?.humidity_pct ?? null,
         viento: w?.wind_speed_kmh ?? null,
+        rafaga: w?.wind_gust_kmh ?? null,
         precipitacion: precip.get(nombre)?.precipitacion_mm ?? null,
         nivelRio: nivel.get(nombre)?.nivel_m ?? null,
       };

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { PuntoPesca, Especie } from "@/lib/api";
+import type { PuntoPesca, Especie, ZonaSedimentacion } from "@/lib/api";
 import type { EstacionSnapshot } from "@/lib/stations";
 
 const MapaView = dynamic(() => import("./mapa-view"), {
@@ -12,7 +12,7 @@ const MapaView = dynamic(() => import("./mapa-view"), {
 export function MapaViewLoader(props: {
   puntos: PuntoPesca[];
   especies: Especie[];
-  sedimentacion: [number, number][][];
+  sedimentacion: ZonaSedimentacion[];
   estaciones: EstacionSnapshot[];
 }) {
   return <MapaView {...props} />;

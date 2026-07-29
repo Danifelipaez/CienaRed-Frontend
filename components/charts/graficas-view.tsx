@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
-import { MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
+import { MetricGrid, MetricTile, MonoChip, Pill, StatusDot, TrendBadge } from "@/components/ui/primitives";
 import { TimeSeriesChart, ScatterChart, MoonGlyph } from "@/components/ui/charts";
-import type { HistoryResponse } from "@/lib/api";
+import type { DashboardSnapshot, HistoryResponse } from "@/lib/api";
 import {
   satelliteToTempSeries,
   satelliteToChloroSeries,
@@ -36,7 +36,13 @@ function fasesLuna() {
   });
 }
 
-export function GraficasView({ initialHistory }: { initialHistory: HistoryResponse }) {
+export function GraficasView({
+  initialHistory,
+  snapshot,
+}: {
+  initialHistory: HistoryResponse;
+  snapshot: DashboardSnapshot | null;
+}) {
   const [rango, setRango] = useState<(typeof RANGOS)[number]>("30");
   const [history, setHistory] = useState(initialHistory);
   const [loading, setLoading] = useState(false);
@@ -209,6 +215,51 @@ export function GraficasView({ initialHistory }: { initialHistory: HistoryRespon
             ))}
           </div>
         </Card>
+
+        {snapshot && (
+          <Card title="Calidad del agua" label="Sensores IoT — lectura actual" span={12} icon="droplet" motif="mangle">
+            <MetricGrid>
+              <MetricTile label="pH" value={snapshot.water.ph ?? "—"} />
+              <MetricTile label="Temp. del agua" value={snapshot.water.temperature_c ?? "—"} unit="°C" />
+              <MetricTile label="Conductividad" value={snapshot.water.conductivity_mscm ?? "—"} unit="mS/cm" />
+              <MetricTile
+                label="Nivel de agua"
+                value={snapshot.water.water_level_cm ?? "—"}
+                unit="cm"
+                trend={
+                  snapshot.tendencias.variables.water_level_cm && (
+                    <TrendBadge
+                      direccion={snapshot.tendencias.variables.water_level_cm.direccion}
+                      delta={snapshot.tendencias.variables.water_level_cm.delta_7d}
+                      unit=" cm/7d"
+                    />
+                  )
+                }
+              />
+              <MetricTile
+                label="Salinidad"
+                value={snapshot.water.salinity_psu ?? "—"}
+                unit="PSU"
+                trend={
+                  snapshot.tendencias.variables.salinity_psu && (
+                    <TrendBadge
+                      direccion={snapshot.tendencias.variables.salinity_psu.direccion}
+                      delta={snapshot.tendencias.variables.salinity_psu.delta_7d}
+                      unit=" PSU/7d"
+                    />
+                  )
+                }
+              />
+              <MetricTile label="TDS" value={snapshot.water.tds_mgl ?? "—"} unit="mg/L" />
+              <MetricTile
+                label="Lluvia acumulada"
+                value={snapshot.tendencias.lluvia_72h_mm ?? "—"}
+                unit="mm / 72h"
+                sub="Cuenca — insumo del pulso de agua dulce"
+              />
+            </MetricGrid>
+          </Card>
+        )}
 
         <Card title="Correlación" label="Clorofila-a vs. captura reportada" span={6} icon="gauge">
           {correlacion.length > 1 ? (

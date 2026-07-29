@@ -1,14 +1,25 @@
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
-import { MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
+import { MetricGrid, MetricTile, MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
 import { BackendError } from "@/components/ui/backend-error";
-import { backendFetchAdmin, READ_REVALIDATE, type ApiStatus, type SystemStatusResponse } from "@/lib/api";
+import {
+  backendFetchAdmin,
+  getLatestSnapshot,
+  READ_REVALIDATE,
+  type ApiStatus,
+  type DashboardSnapshot,
+  type SystemStatusResponse,
+} from "@/lib/api";
 
 function estTone(e: ApiStatus["estado"]) {
   return e === "ok" ? "verde" : e === "degradado" ? "amarillo" : "rojo";
 }
 function estLabel(e: ApiStatus["estado"]) {
   return e === "ok" ? "Operativo" : e === "degradado" ? "Degradado" : "Caído";
+}
+
+function nivelTone(n: "alto" | "medio" | "bajo" | null) {
+  return n === "alto" ? "rojo" : n === "medio" ? "amarillo" : "verde";
 }
 
 async function getSystemStatus(): Promise<SystemStatusResponse | null> {
@@ -19,12 +30,23 @@ async function getSystemStatus(): Promise<SystemStatusResponse | null> {
   }
 }
 
+async function getSnapshot(): Promise<DashboardSnapshot | null> {
+  try {
+    return await getLatestSnapshot();
+  } catch {
+    return null;
+  }
+}
+
 export default async function SistemaPage() {
-  const status = await getSystemStatus();
+  const [status, snapshot] = await Promise.all([getSystemStatus(), getSnapshot()]);
 
   if (!status) {
     return <BackendError title="Estado del sistema" />;
   }
+
+  const anoxia = snapshot?.senales.anoxia;
+  const pulso = snapshot?.senales.pulso_agua_dulce;
 
   return (
     <div className="cr-content-scroll">
@@ -65,22 +87,45 @@ export default async function SistemaPage() {
         ))}
 
         <Card title="Métricas del bot" label="Comunidad · WhatsApp" span={12} icon="bot" motif="cana">
-          <div className="cr-metric-grid">
+          <MetricGrid>
             {status.bot_metricas.map((m) => (
-              <div key={m.id} className="cr-metric">
-                <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
-                  {m.label}
-                </span>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "6px 0 2px" }}>
-                  <span className="serif" style={{ fontSize: 34, fontWeight: 600, color: "var(--ink)", lineHeight: 1 }}>
-                    {m.valor}
-                  </span>
-                </div>
-                <span style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>{m.sub}</span>
-              </div>
+              <MetricTile key={m.id} label={m.label} value={m.valor} sub={m.sub} />
             ))}
-          </div>
+          </MetricGrid>
         </Card>
+
+        {anoxia && (
+          <Card title="Señales de riesgo" label="Compuestas · satélite + clima + sensores" span={12} icon="gauge" motif="lirio">
+            <MetricGrid>
+              <MetricTile
+                label="Riesgo de anoxia"
+                value={anoxia.score != null ? anoxia.score : "—"}
+                unit={anoxia.score != null ? "/100" : undefined}
+                sub={
+                  anoxia.nivel ? (
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <Pill tone={nivelTone(anoxia.nivel)}>{anoxia.nivel}</Pill>
+                      {anoxia.factores.length > 0 && anoxia.factores.join(", ")}
+                    </span>
+                  ) : (
+                    "Datos insuficientes para estimar"
+                  )
+                }
+              />
+              {pulso && (
+                <MetricTile
+                  label="Pulso de agua dulce"
+                  value={`${pulso.lluvia_72h_mm}`}
+                  unit="mm / 72h"
+                  sub={pulso.mensaje}
+                />
+              )}
+            </MetricGrid>
+            <p className="mono" style={{ fontSize: 10.5, color: "var(--ink-faint)", marginTop: 14 }}>
+              Estimación, no medición — umbrales sin validar contra un evento real todavía.
+            </p>
+          </Card>
+        )}
 
         <Card title="Alertas recientes" label="Enviadas a WhatsApp" span={12} icon="system">
           <div className="cr-alert-log">
@@ -94,6 +139,7 @@ export default async function SistemaPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{al.zonas}</span>
                     <MonoChip>{al.canal}</MonoChip>
+                    {al.destinatarios != null && <MonoChip tone="teal">{al.destinatarios} destinatarios</MonoChip>}
                   </div>
                   <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{al.texto}</p>
                 </div>

@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { Icon } from "@/components/ui/icon";
 import { StatusDot, SectionLabel, MonoChip, Toggle } from "@/components/ui/primitives";
 import { MoonGlyph } from "@/components/ui/charts";
-import type { PuntoPesca, Especie } from "@/lib/api";
+import type { PuntoPesca, Especie, ZonaSedimentacion } from "@/lib/api";
 import type { EstacionSnapshot } from "@/lib/stations";
 
 const CR_CENTER: [number, number] = [10.86, -74.43];
@@ -56,6 +56,7 @@ function estacionPopupHTML(e: EstacionSnapshot) {
       <div>Temp. ambiental: <b style="color:var(--ink)">${fmt(e.tempAmbiental, "°C")}</b></div>
       <div>Humedad: <b style="color:var(--ink)">${fmt(e.humedad, "%")}</b></div>
       <div>Viento: <b style="color:var(--ink)">${fmt(e.viento, "km/h")}</b></div>
+      <div>Ráfaga: <b style="color:var(--ink)">${fmt(e.rafaga, "km/h")}</b></div>
       <div>Precipitación: <b style="color:var(--ink)">${fmt(e.precipitacion, "mm")}</b></div>
       <div>Nivel río: <b style="color:var(--ink)">${fmt(e.nivelRio, "m")}</b></div>
     </div>
@@ -64,6 +65,19 @@ function estacionPopupHTML(e: EstacionSnapshot) {
 
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+const SEDIMENTACION_NIVEL_COLOR: Record<string, string> = { alto: "#C05746", medio: "#C9981E", bajo: "#4A7C59" };
+
+function sedimentacionPopupHTML(z: ZonaSedimentacion) {
+  const col = SEDIMENTACION_NIVEL_COLOR[z.nivel] ?? "#C4A882";
+  return `<div style="padding:12px 14px;font-family:var(--font-body)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <span class="serif" style="font-size:15px;font-weight:600;color:var(--verde)">${escapeHtml(z.nombre)}</span>
+      <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 8px;border-radius:999px;background:${col}22;color:${col}">${z.nivel.toUpperCase()}</span>
+    </div>
+    ${z.observacion ? `<p style="margin:0;font-size:12.5px;line-height:1.45;color:var(--ink-soft)">${escapeHtml(z.observacion)}</p>` : ""}
+  </div>`;
 }
 
 function popupHTML(p: PuntoPesca) {
@@ -76,6 +90,7 @@ function popupHTML(p: PuntoPesca) {
       <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Temp. sup.</div><div class="serif" style="font-size:17px;color:var(--ink)">${(p.temp ?? 0).toFixed(1)}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> °C</span></div></div>
       <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Clorofila-a</div><div class="serif" style="font-size:17px;color:var(--ink)">${(p.clorofila ?? 0).toFixed(1)}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> mg/m³</span></div></div>
       <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Salinidad</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.salinidad != null ? p.salinidad.toFixed(1) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> PSU</span></div></div>
+      <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">TDS</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.tds != null ? p.tds.toFixed(0) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> mg/L</span></div></div>
     </div>
     <div style="font-size:12.5px;line-height:1.45;color:var(--ink-soft);border-top:1px solid var(--border);padding-top:9px">
       <div class="mono" style="font-size:9.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">Observación comunitaria</div>
@@ -92,7 +107,7 @@ export default function MapaView({
 }: {
   puntos: PuntoPesca[];
   especies: Especie[];
-  sedimentacion: [number, number][][];
+  sedimentacion: ZonaSedimentacion[];
   estaciones: EstacionSnapshot[];
 }) {
   const mapRef = useRef<LeafletType.Map | null>(null);
@@ -166,8 +181,10 @@ export default function MapaView({
         L.circle([p.lat, p.lng], { radius: 1600 + k * 1200, color: col, weight: 0, fillColor: col, fillOpacity: 0.28, pane: "pane-viento" }).addTo(vieG);
       });
       const sedG = L.layerGroup();
-      sedimentacion.forEach((poly) => {
-        L.polygon(poly, { color: "#C4A882", weight: 1, fillColor: "#C4A882", fillOpacity: 0.4, dashArray: "4 4", pane: "pane-sedimentacion" }).addTo(sedG);
+      sedimentacion.forEach((z) => {
+        L.polygon(z.polygon, { color: "#C4A882", weight: 1, fillColor: "#C4A882", fillOpacity: 0.4, dashArray: "4 4", pane: "pane-sedimentacion" })
+          .bindPopup(sedimentacionPopupHTML(z), { className: "cr-popup", closeButton: true })
+          .addTo(sedG);
       });
       const semG = L.layerGroup();
       puntos.forEach((p) => {
@@ -427,6 +444,7 @@ export default function MapaView({
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "2px 0 9px" }}>
                 <MonoChip tone="teal">{(selected.temp ?? 0).toFixed(1)} °C</MonoChip>
                 <MonoChip>{(selected.clorofila ?? 0).toFixed(1)} mg/m³</MonoChip>
+                {selected.tds != null && <MonoChip>{selected.tds.toFixed(0)} mg/L TDS</MonoChip>}
                 <MonoChip tone="sediment">{selected.especies.join(" · ")}</MonoChip>
               </div>
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--ink-soft)" }}>{selected.observacion}</p>
