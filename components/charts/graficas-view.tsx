@@ -118,6 +118,56 @@ export function GraficasView({
   const eventos = useMemo(() => semaphoreToEventos(history.semaphore), [history]);
   const luna = useMemo(() => fasesLuna(), []);
 
+  const chartsAmbiente = chartData.filter((c) => c.spec.group !== "agua");
+  const chartsAgua = chartData.filter((c) => c.spec.group === "agua");
+
+  function renderChartCard({ spec, series, granularity, aggregated, annotations }: (typeof chartData)[number]) {
+    return (
+      <Card
+        key={spec.id}
+        title={spec.title}
+        label={spec.source}
+        span={spec.span}
+        motif={spec.motif}
+        actions={
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {spec.showVistaToggle && (
+              <div className="cr-segment">
+                {VISTAS_CLIMA.map((v) => (
+                  <button
+                    key={v}
+                    className={"cr-seg-btn" + (climaVista === v ? " active" : "")}
+                    onClick={() => setClimaVista(v)}
+                  >
+                    {VISTA_CLIMA_LABEL[v]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="mono" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+              {spec.unit}
+            </span>
+          </div>
+        }
+      >
+        {series.some((s) => s.data.length > 1) ? (
+          <TimeSeriesChart
+            series={series}
+            granularity={granularity}
+            aggregated={aggregated}
+            height={spec.span === 12 ? 200 : 190}
+            yMin={spec.yMin}
+            yMax={spec.yMax}
+            area={spec.area}
+            annotations={annotations}
+          />
+        ) : (
+          <EmptySeries />
+        )}
+      </Card>
+    );
+  }
+
   return (
     <div className="cr-content-scroll">
       <header className="cr-page-head">
@@ -148,50 +198,7 @@ export function GraficasView({
       </header>
 
       <CardGrid>
-        {chartData.map(({ spec, series, granularity, aggregated, annotations }) => (
-          <Card
-            key={spec.id}
-            title={spec.title}
-            label={spec.source}
-            span={spec.span}
-            motif={spec.motif}
-            actions={
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {spec.showVistaToggle && (
-                  <div className="cr-segment">
-                    {VISTAS_CLIMA.map((v) => (
-                      <button
-                        key={v}
-                        className={"cr-seg-btn" + (climaVista === v ? " active" : "")}
-                        onClick={() => setClimaVista(v)}
-                      >
-                        {VISTA_CLIMA_LABEL[v]}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <span className="mono" style={{ fontSize: 12, color: "var(--ink-soft)" }}>
-                  {spec.unit}
-                </span>
-              </div>
-            }
-          >
-            {series.some((s) => s.data.length > 1) ? (
-              <TimeSeriesChart
-                series={series}
-                granularity={granularity}
-                aggregated={aggregated}
-                height={spec.span === 12 ? 200 : 190}
-                yMin={spec.yMin}
-                yMax={spec.yMax}
-                area={spec.area}
-                annotations={annotations}
-              />
-            ) : (
-              <EmptySeries />
-            )}
-          </Card>
-        ))}
+        {chartsAmbiente.map(renderChartCard)}
 
         <Card label="Ciclo lunar — ventana de observación" span={12} pad={24}>
           <div className="cr-luna">
@@ -240,6 +247,8 @@ export function GraficasView({
             </MetricGrid>
           </Card>
         )}
+
+        {chartsAgua.map(renderChartCard)}
 
         {snapshot && (
           <Card title="Alertas de ciclón" label="NOAA NHC — monitoreo activo" span={12} icon="wind">

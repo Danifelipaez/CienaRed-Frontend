@@ -11,6 +11,7 @@ import {
   satelliteToChloroSeries,
   ideamPrecipitacionToSeries,
   ideamNivelToSeries,
+  waterToSeries,
 } from "./adapters";
 
 export interface ChartSpec {
@@ -18,7 +19,7 @@ export interface ChartSpec {
   title: string;
   source: string;
   unit: string;
-  span: 6 | 12;
+  span: 4 | 6 | 12;
   motif?: "raya" | "mangle" | "cana" | "lirio";
   granularity: ChartGranularity;
   aggregated?: boolean;
@@ -27,6 +28,8 @@ export interface ChartSpec {
   yMin?: number;
   yMax?: number;
   area?: boolean;
+  /** Charts con este grupo se renderizan junto a la card "Calidad del agua" en vez del bloque principal. */
+  group?: "agua";
   annotate?: (series: MultiSeries[]) => { seriesIndex: number; pointIndex: number; label: string }[];
   getSeries: (history: HistoryResponse, vista: VistaClima) => MultiSeries[];
 }
@@ -149,5 +152,46 @@ export const CHART_SPECS: ChartSpec[] = [
     aggregated: false,
     yMin: 0,
     getSeries: (history) => ideamNivelToSeries(history.ideam_nivel_rio),
+  },
+  {
+    id: "ph-agua",
+    title: "pH del agua",
+    source: "Sensores IoT — red de boyas",
+    unit: "pH",
+    span: 4,
+    motif: "mangle",
+    granularity: "hour",
+    usesVista: true,
+    group: "agua",
+    yMin: 0,
+    yMax: 14,
+    getSeries: (history, vista) => singleSeries("pH", "var(--teal)", waterToSeries(history.water, "ph", vista)),
+  },
+  {
+    id: "temp-agua",
+    title: "Temperatura del agua",
+    source: "Sensores IoT — red de boyas",
+    unit: "°C",
+    span: 4,
+    motif: "lirio",
+    granularity: "hour",
+    usesVista: true,
+    group: "agua",
+    getSeries: (history, vista) =>
+      singleSeries("Temp. del agua", "var(--salmon)", waterToSeries(history.water, "temperature_c", vista)),
+  },
+  {
+    id: "conductividad-agua",
+    title: "Conductividad del agua",
+    source: "Sensores IoT — red de boyas",
+    unit: "mS/cm",
+    span: 4,
+    motif: "cana",
+    granularity: "hour",
+    usesVista: true,
+    group: "agua",
+    yMin: 0,
+    getSeries: (history, vista) =>
+      singleSeries("Conductividad", "var(--verde)", waterToSeries(history.water, "conductivity_mscm", vista)),
   },
 ];
