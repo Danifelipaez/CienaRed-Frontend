@@ -82,6 +82,7 @@ export interface WeatherHistoryPoint {
   temperature_c: number | null;
   humidity_pct: number | null;
   wind_speed_kmh: number | null;
+  wind_gust_kmh: number | null;
   precipitation_mm: number | null;
 }
 
@@ -126,6 +127,111 @@ export interface HistoryResponse {
 
 export const getHistory = (days = 30) =>
   backendFetch<HistoryResponse>(`/data/history?days=${days}`, undefined, READ_REVALIDATE);
+
+// ── Estado actual (snapshot) ────────────────────────────────────────────────────
+
+export interface WeatherSnapshot {
+  temperature_c: number | null;
+  humidity_pct: number | null;
+  wind_speed_kmh: number | null;
+  wind_direction_deg: number | null;
+  wind_gust_kmh: number | null;
+  precipitation_mm: number | null;
+}
+
+export interface SatelliteSnapshot {
+  sst_celsius: number | null;
+  chlorophyll_mgm3: number | null;
+  date: string | null;
+}
+
+export interface SemaphoreInfo {
+  color: string;
+  reason: string;
+  safe: boolean;
+}
+
+export interface WaterQuality {
+  ph: number | null;
+  temperature_c: number | null;
+  conductivity_mscm: number | null;
+  water_level_cm: number | null;
+  salinity_psu: number | null;
+  tds_mgl: number | null;
+}
+
+export interface SensorSummary {
+  zone: string | null;
+  ph: number | null;
+  temperature_c: number | null;
+  conductivity_mscm: number | null;
+  water_level_cm: number | null;
+}
+
+export interface ZoneIPP {
+  zone: string;
+  ipp: number;
+  cobertura: number | null;
+}
+
+export interface CycloneAlert {
+  title: string;
+  summary: string;
+  link: string;
+}
+
+// direccion: null cuando no hay histórico suficiente — no es lo mismo que "estable".
+export interface TrendVariable {
+  actual: number;
+  delta_24h: number | null;
+  delta_7d: number | null;
+  direccion: "subiendo" | "bajando" | "estable" | null;
+}
+
+export interface Tendencias {
+  variables: Record<string, TrendVariable>;
+  lluvia_72h_mm: number | null;
+}
+
+// Señal compuesta — ESTIMACIÓN, no medición (ver app/services/signals.py del backend).
+export interface AnoxiaSignal {
+  score: number | null;
+  nivel: "alto" | "medio" | "bajo" | null;
+  factores: string[];
+  n_factores: number;
+  estimacion: boolean;
+}
+
+export interface PulsoAguaDulce {
+  lluvia_72h_mm: number;
+  mensaje: string;
+  estimacion: boolean;
+}
+
+export interface Senales {
+  anoxia: AnoxiaSignal;
+  pulso_agua_dulce: PulsoAguaDulce | null;
+}
+
+export interface DashboardSnapshot {
+  semaphore: SemaphoreInfo;
+  weather: WeatherSnapshot;
+  tasajera_weather: WeatherSnapshot | null;
+  satellite: SatelliteSnapshot;
+  water: WaterQuality;
+  sensors: SensorSummary[];
+  ipp_ranking: ZoneIPP[];
+  cyclone_alerts: CycloneAlert[];
+  ideam_precipitacion: IdeamPrecipitacionPoint[];
+  ideam_nivel_rio: IdeamNivelPoint[];
+  origen: Record<string, unknown>;
+  tendencias: Tendencias;
+  senales: Senales;
+  updated_at: string;
+}
+
+export const getLatestSnapshot = () =>
+  backendFetch<DashboardSnapshot>("/data/latest", undefined, READ_REVALIDATE);
 
 // ── Alertas ────────────────────────────────────────────────────────────────────
 

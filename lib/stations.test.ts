@@ -17,27 +17,27 @@ function history(overrides: Partial<HistoryResponse>): HistoryResponse {
 describe("historyToEstaciones", () => {
   it("drops stations with no known coordinates", () => {
     const h = history({
-      weather: [{ timestamp: "2026-07-01T00:00:00Z", estacion: "Estación Desconocida", temperature_c: 30, humidity_pct: null, wind_speed_kmh: null, precipitation_mm: null }],
+      weather: [{ timestamp: "2026-07-01T00:00:00Z", estacion: "Estación Desconocida", temperature_c: 30, humidity_pct: null, wind_speed_kmh: null, wind_gust_kmh: null, precipitation_mm: null }],
     });
     expect(historyToEstaciones(h)).toEqual([]);
   });
 
   it("keeps stations with known coordinates and merges weather/ideam readings", () => {
     const h = history({
-      weather: [{ timestamp: "2026-07-01T00:00:00Z", estacion: "CGSM", temperature_c: 31.5, humidity_pct: 80, wind_speed_kmh: 12, precipitation_mm: null }],
+      weather: [{ timestamp: "2026-07-01T00:00:00Z", estacion: "CGSM", temperature_c: 31.5, humidity_pct: 80, wind_speed_kmh: 12, wind_gust_kmh: 20, precipitation_mm: null }],
       ideam_precipitacion: [{ date: "2026-07-01", estacion: "CGSM", precipitacion_mm: 4.2 }],
       ideam_nivel_rio: [{ date: "2026-07-01", estacion: "CGSM", nivel_m: 1.1 }],
     });
     expect(historyToEstaciones(h)).toEqual([
-      { id: "CGSM", nombre: "CGSM", lat: 10.859056, lng: -74.460611, tempAmbiental: 31.5, humedad: 80, viento: 12, precipitacion: 4.2, nivelRio: 1.1 },
+      { id: "CGSM", nombre: "CGSM", lat: 10.859056, lng: -74.460611, tempAmbiental: 31.5, humedad: 80, viento: 12, rafaga: 20, precipitacion: 4.2, nivelRio: 1.1 },
     ]);
   });
 
   it("keeps the last row per station (assumes ascending-date input)", () => {
     const h = history({
       weather: [
-        { timestamp: "2026-07-01T00:00:00Z", estacion: "CGSM", temperature_c: 30, humidity_pct: null, wind_speed_kmh: null, precipitation_mm: null },
-        { timestamp: "2026-07-02T00:00:00Z", estacion: "CGSM", temperature_c: 33, humidity_pct: null, wind_speed_kmh: null, precipitation_mm: null },
+        { timestamp: "2026-07-01T00:00:00Z", estacion: "CGSM", temperature_c: 30, humidity_pct: null, wind_speed_kmh: null, wind_gust_kmh: null, precipitation_mm: null },
+        { timestamp: "2026-07-02T00:00:00Z", estacion: "CGSM", temperature_c: 33, humidity_pct: null, wind_speed_kmh: null, wind_gust_kmh: null, precipitation_mm: null },
       ],
     });
     expect(historyToEstaciones(h)[0].tempAmbiental).toBe(33);
