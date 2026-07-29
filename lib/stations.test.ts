@@ -8,6 +8,7 @@ function history(overrides: Partial<HistoryResponse>): HistoryResponse {
     semaphore: [],
     satellite: [],
     captura: [],
+    water: [],
     ideam_precipitacion: [],
     ideam_nivel_rio: [],
     ...overrides,
