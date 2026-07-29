@@ -223,20 +223,6 @@ export function GraficasView({
               <MetricTile label="Temp. del agua" value={snapshot.water.temperature_c ?? "—"} unit="°C" />
               <MetricTile label="Conductividad" value={snapshot.water.conductivity_mscm ?? "—"} unit="mS/cm" />
               <MetricTile
-                label="Nivel de agua"
-                value={snapshot.water.water_level_cm ?? "—"}
-                unit="cm"
-                trend={
-                  snapshot.tendencias.variables.water_level_cm && (
-                    <TrendBadge
-                      direccion={snapshot.tendencias.variables.water_level_cm.direccion}
-                      delta={snapshot.tendencias.variables.water_level_cm.delta_7d}
-                      unit=" cm/7d"
-                    />
-                  )
-                }
-              />
-              <MetricTile
                 label="Salinidad"
                 value={snapshot.water.salinity_psu ?? "—"}
                 unit="PSU"
@@ -251,13 +237,42 @@ export function GraficasView({
                 }
               />
               <MetricTile label="TDS" value={snapshot.water.tds_mgl ?? "—"} unit="mg/L" />
-              <MetricTile
-                label="Lluvia acumulada"
-                value={snapshot.tendencias.lluvia_72h_mm ?? "—"}
-                unit="mm / 72h"
-                sub="Cuenca — insumo del pulso de agua dulce"
-              />
             </MetricGrid>
+          </Card>
+        )}
+
+        {snapshot && (
+          <Card title="Alertas de ciclón" label="NOAA NHC — monitoreo activo" span={12} icon="wind">
+            {snapshot.cyclone_alerts.length ? (
+              <div className="cr-events">
+                {snapshot.cyclone_alerts.map((c, i) => (
+                  <div key={i} className="cr-event-row">
+                    <span style={{ marginTop: 3 }}>
+                      <StatusDot tone="rojo" pulse />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{c.title}</span>
+                        {c.link && (
+                          <a
+                            href={c.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mono"
+                            style={{ fontSize: 11, color: "var(--teal)", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}
+                          >
+                            Ver fuente <Icon name="arrowRight" size={11} />
+                          </a>
+                        )}
+                      </div>
+                      <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{c.summary}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptySeries note="Sin alertas de ciclón activas" />
+            )}
           </Card>
         )}
 
