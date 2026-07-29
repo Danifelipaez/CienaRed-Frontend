@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
@@ -47,11 +47,17 @@ export function DashboardShell({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [prevPathname, setPrevPathname] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const view = pathname.split("/")[2] || "mapa";
 
-  useEffect(() => setMobileOpen(false), [pathname]);
+  // Cierra el menú móvil al navegar — ajuste de estado durante el render (no
+  // un efecto) para evitar el doble render que un useEffect provocaría aquí.
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    if (prevPathname !== null) setMobileOpen(false);
+  }
 
   return (
     <div className="cr-app">

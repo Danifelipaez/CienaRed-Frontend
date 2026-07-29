@@ -298,7 +298,6 @@ export function IAView() {
   useEffect(() => {
     refreshHistory(getUserId());
     return clearTimers;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
