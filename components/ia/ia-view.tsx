@@ -337,12 +337,11 @@ export function IAView() {
         <span className="cr-ctx-title mono">Contexto</span>
         <div className="cr-ctx-bar">
           {IA_CONTEXTO.map((c) => (
-            <div key={c.id} className="cr-ctx-pill" title={c.fuente}>
+            <div key={c.id} className="cr-ctx-pill" title={`${c.label} — ${c.fuente}`}>
               <span className="cr-ctx-ic">
-                <Icon name={c.icon} size={13} />
+                <Icon name={c.icon} size={12} />
               </span>
-              <span className="cr-ctx-lbl">{c.label}</span>
-              <StatusDot tone="teal" size={6} />
+              <StatusDot tone="teal" size={5} />
             </div>
           ))}
         </div>

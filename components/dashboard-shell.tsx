@@ -32,7 +32,7 @@ function toggleTheme() {
   const isDark = root.getAttribute("data-palette") === "nocturno";
   if (isDark) {
     root.removeAttribute("data-palette");
-    localStorage.removeItem("cr-palette");
+    localStorage.setItem("cr-palette", "claro");
   } else {
     root.setAttribute("data-palette", "nocturno");
     localStorage.setItem("cr-palette", "nocturno");
