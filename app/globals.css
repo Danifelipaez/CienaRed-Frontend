@@ -146,11 +146,11 @@ html, body {
 .cr-sidebar{width:var(--sidebar-w);background:var(--sidebar);border-right:1px solid var(--border);
   display:flex;flex-direction:column;flex-shrink:0;transition:width .25s cubic-bezier(.4,0,.2,1);overflow:hidden;position:relative;z-index:20}
 .cr-sidebar.collapsed{width:var(--sidebar-w-collapsed)}
-.cr-sb-top{padding:18px 18px 10px;display:flex;align-items:center;gap:11px;min-height:64px}
+.cr-sb-top{padding:18px 18px 10px;display:flex;align-items:center;gap:11px;min-height:70px}
 .cr-sb-titlewrap{min-width:0;opacity:1;transition:opacity .2s}
 .cr-sidebar.collapsed .cr-sb-titlewrap,.cr-sidebar.collapsed .cr-label{opacity:0;width:0;pointer-events:none}
 .cr-sb-title{font-family:var(--font-display);font-size:21px;font-weight:700;color:var(--verde);line-height:1;letter-spacing:-.01em;white-space:nowrap}
-.cr-sb-sub{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--ink-soft);margin-top:3px;white-space:nowrap;text-transform:uppercase}
+.cr-sb-sub{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--ink-soft);margin-top:3px;line-height:1.3;text-transform:uppercase}
 .cr-newbtn{margin:8px 14px 6px;background:var(--verde-btn);color:#fff;border:none;border-radius:11px;padding:13px;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;
   font-family:var(--font-mono);font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:background .15s;white-space:nowrap}
 .cr-newbtn:hover{background:var(--verde-btn-h)}

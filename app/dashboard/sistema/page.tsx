@@ -2,6 +2,7 @@ import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
 import { MetricGrid, MetricTile, MonoChip, nivelTone, Pill, StatusDot, VENDAVAL_LABEL } from "@/components/ui/primitives";
 import { BackendError } from "@/components/ui/backend-error";
+import { formatTooltipHeader } from "@/components/charts/time-format";
 import {
   backendFetchAdmin,
   getLatestSnapshot,
@@ -78,7 +79,7 @@ export default async function SistemaPage() {
               <Pill tone={estTone(a.estado)}>{estLabel(a.estado)}</Pill>
             </div>
             <div className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name="history" size={12} /> Actualizado {a.actualizado}
+              <Icon name="history" size={12} /> Actualizado {formatTooltipHeader(a.actualizado, "hour")}
             </div>
           </Card>
         ))}
@@ -142,7 +143,7 @@ export default async function SistemaPage() {
           <div className="cr-alert-log">
             {status.log_alertas.map((al, i) => (
               <div key={i} className="cr-alert-row">
-                <div className="cr-alert-time mono">{al.hora}</div>
+                <div className="cr-alert-time mono">{formatTooltipHeader(al.hora, "hour")}</div>
                 <span style={{ marginTop: 3 }}>
                   <StatusDot tone={al.tipo === "red" || al.tipo === "rojo" ? "rojo" : al.tipo === "yellow" || al.tipo === "amarillo" ? "amarillo" : "verde"} pulse={al.tipo === "red" || al.tipo === "rojo"} />
                 </span>

@@ -1,7 +1,6 @@
 # CienaRed Frontend
 
-Dashboard Next.js (App Router) para **CienRayas** (nombre de producto mostrado en la UI — el
-repo/paquete se llaman CienaRed/frontend, no son el mismo nombre): monitoreo ambiental de la
+Dashboard Next.js (App Router) para **CienaRed**: monitoreo ambiental de la
 Ciénaga Grande de Santa Marta para pescadores artesanales. Consume un backend FastAPI aparte
 (`CienaNet Bot`, repo separado).
 

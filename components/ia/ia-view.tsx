@@ -118,7 +118,7 @@ function AssistantAnswer({
 }) {
   const parrafos = response.parrafos ?? [];
   return (
-    <AIBlock label="Análisis · CienRayas IA">
+    <AIBlock label="Análisis · CienaRed IA">
       {parrafos.map(
         (p, i) =>
           showBlock(i) && (

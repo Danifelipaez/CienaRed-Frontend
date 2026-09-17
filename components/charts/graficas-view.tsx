@@ -140,7 +140,7 @@ export function GraficasView({
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `cienrayas_series_${rango}d.csv`;
+    a.download = `cienared_series_${rango}d.csv`;
     a.click();
   }
   const correlacion = useMemo(() => toCorrelacion(history.satellite, history.captura), [history]);

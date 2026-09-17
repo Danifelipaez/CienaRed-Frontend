@@ -22,7 +22,7 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "CienRayas · Monitoreo Ciénaga Grande",
+  title: "CienaRed · Monitoreo Ciénaga Grande",
   description: "Monitoreo ambiental de la Ciénaga Grande de Santa Marta para pescadores artesanales",
 };
 

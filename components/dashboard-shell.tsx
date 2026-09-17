@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Botanical, SealLogo } from "@/components/ui/botanical";
 import { Pill, StatusDot } from "@/components/ui/primitives";
+import { formatTooltipHeader } from "@/components/charts/time-format";
 import type { ApiStatus, CycloneAlert, TormentaSignal } from "@/lib/api";
 
 const NAV = [
@@ -70,7 +71,7 @@ export function DashboardShell({
         <div className="cr-sb-top">
           <SealLogo size={collapsed ? 40 : 42} />
           <div className="cr-sb-titlewrap">
-            <div className="cr-sb-title">CienRayas</div>
+            <div className="cr-sb-title">CienaRed</div>
             <div className="cr-sb-sub">Ciénaga Grande · Santa Marta</div>
           </div>
         </div>
@@ -113,7 +114,7 @@ export function DashboardShell({
               <Icon name="sliders" size={18} />
             </button>
             <div className="cr-bread">
-              CienRayas <Icon name="chevron" size={13} style={{ opacity: 0.4 }} /> <b>{VIEW_TITLE[view]}</b>
+              CienaRed <Icon name="chevron" size={13} style={{ opacity: 0.4 }} /> <b>{VIEW_TITLE[view]}</b>
             </div>
           </div>
           <div className="cr-sys">
@@ -132,7 +133,7 @@ export function DashboardShell({
               </Pill>
             )}
             {apis.map((a) => (
-              <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${a.actualizado}`}>
+              <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${formatTooltipHeader(a.actualizado, "hour")}`}>
                 <StatusDot tone={apiTone(a.estado)} size={8} pulse={a.estado !== "ok"} />
                 {a.nombre}
               </span>
