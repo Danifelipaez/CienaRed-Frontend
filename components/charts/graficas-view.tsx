@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
-import { MetricGrid, MetricTile, MonoChip, Pill, StatusDot, TrendBadge } from "@/components/ui/primitives";
+import { MetricGrid, MetricTile, MonoChip, nivelTone, Pill, StatusDot, TrendBadge, VENDAVAL_LABEL } from "@/components/ui/primitives";
 import { TimeSeriesChart, ScatterChart, MoonGlyph } from "@/components/ui/charts";
 import type { DashboardSnapshot, HistoryResponse } from "@/lib/api";
 import {
@@ -149,6 +149,8 @@ export function GraficasView({
 
   const chartsAmbiente = chartData.filter((c) => c.spec.group !== "agua");
   const chartsAgua = chartData.filter((c) => c.spec.group === "agua");
+  const vendaval = snapshot?.senales.vendaval;
+  const tormenta = snapshot?.senales.tormenta;
 
   function renderChartCard({ spec, series, granularity, aggregated, annotations }: (typeof chartData)[number]) {
     return (
@@ -278,6 +280,43 @@ export function GraficasView({
         )}
 
         {chartsAgua.map(renderChartCard)}
+
+        {vendaval && (
+          <Card title="Vendaval" label="Outlook convectivo 24-48h" span={6} icon="wind">
+            <MetricGrid>
+              <MetricTile
+                label="Probabilidad de vendaval"
+                value={vendaval.score != null ? vendaval.score : "—"}
+                unit={vendaval.score != null ? "/100" : undefined}
+                sub={
+                  vendaval.nivel ? (
+                    <Pill tone={nivelTone(vendaval.nivel)}>condiciones {VENDAVAL_LABEL[vendaval.nivel]}</Pill>
+                  ) : (
+                    "Sin pronóstico convectivo"
+                  )
+                }
+              />
+            </MetricGrid>
+          </Card>
+        )}
+
+        {tormenta && (
+          <Card title="Tormenta eléctrica" label="GLM — sistema convectivo activo" span={6} icon="wind" accent="var(--rojo)">
+            <div className="cr-event-row">
+              <span style={{ marginTop: 3 }}>
+                <StatusDot tone="rojo" pulse />
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>
+                  Acercándose desde el {tormenta.rumbo}
+                </span>
+                <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>
+                  ETA {tormenta.eta_min} min · {tormenta.distancia_km} km · {tormenta.n_descargas} descargas detectadas
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {snapshot && (
           <Card title="Alertas de ciclón" label="NOAA NHC — monitoreo activo" span={12} icon="wind">

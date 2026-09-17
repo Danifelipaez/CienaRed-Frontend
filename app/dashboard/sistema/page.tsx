@@ -1,6 +1,6 @@
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
-import { MetricGrid, MetricTile, MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
+import { MetricGrid, MetricTile, MonoChip, nivelTone, Pill, StatusDot, VENDAVAL_LABEL } from "@/components/ui/primitives";
 import { BackendError } from "@/components/ui/backend-error";
 import {
   backendFetchAdmin,
@@ -16,10 +16,6 @@ function estTone(e: ApiStatus["estado"]) {
 }
 function estLabel(e: ApiStatus["estado"]) {
   return e === "ok" ? "Operativo" : e === "degradado" ? "Degradado" : "Caído";
-}
-
-function nivelTone(n: "alto" | "medio" | "bajo" | null) {
-  return n === "alto" ? "rojo" : n === "medio" ? "amarillo" : "verde";
 }
 
 async function getSystemStatus(): Promise<SystemStatusResponse | null> {
@@ -47,6 +43,7 @@ export default async function SistemaPage() {
 
   const anoxia = snapshot?.senales.anoxia;
   const pulso = snapshot?.senales.pulso_agua_dulce;
+  const vendaval = snapshot?.senales.vendaval;
 
   return (
     <div className="cr-content-scroll">
@@ -118,6 +115,20 @@ export default async function SistemaPage() {
                   value={`${pulso.lluvia_72h_mm}`}
                   unit="mm / 72h"
                   sub={pulso.mensaje}
+                />
+              )}
+              {vendaval && (
+                <MetricTile
+                  label="Vendaval (outlook 24-48h)"
+                  value={vendaval.score != null ? vendaval.score : "—"}
+                  unit={vendaval.score != null ? "/100" : undefined}
+                  sub={
+                    vendaval.nivel ? (
+                      <Pill tone={nivelTone(vendaval.nivel)}>condiciones {VENDAVAL_LABEL[vendaval.nivel]}</Pill>
+                    ) : (
+                      "Sin pronóstico convectivo"
+                    )
+                  }
                 />
               )}
             </MetricGrid>

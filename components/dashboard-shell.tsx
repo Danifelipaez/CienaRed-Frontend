@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Botanical, SealLogo } from "@/components/ui/botanical";
 import { Pill, StatusDot } from "@/components/ui/primitives";
-import type { ApiStatus, CycloneAlert } from "@/lib/api";
+import type { ApiStatus, CycloneAlert, TormentaSignal } from "@/lib/api";
 
 const NAV = [
   { id: "mapa", icon: "map", label: "Mapa" },
@@ -41,10 +41,12 @@ function toggleTheme() {
 export function DashboardShell({
   apis,
   cycloneAlerts = [],
+  tormenta = null,
   children,
 }: {
   apis: ApiStatus[];
   cycloneAlerts?: CycloneAlert[];
+  tormenta?: TormentaSignal | null;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -115,6 +117,13 @@ export function DashboardShell({
             </div>
           </div>
           <div className="cr-sys">
+            {tormenta && (
+              <Pill tone="rojo" dot pulse>
+                <span title={`${tormenta.distancia_km} km · ${tormenta.n_descargas} descargas`}>
+                  Tormenta desde el {tormenta.rumbo} · ETA {tormenta.eta_min} min
+                </span>
+              </Pill>
+            )}
             {cycloneAlerts.length > 0 && (
               <Pill tone="rojo" dot pulse>
                 <span title={cycloneAlerts.map((c) => c.title).join(" · ")}>

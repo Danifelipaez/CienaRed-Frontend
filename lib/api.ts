@@ -133,8 +133,22 @@ export interface HistoryResponse {
   ideam_nivel_rio: IdeamNivelPoint[];
 }
 
+// El backend a veces responde 200 con una o más claves ausentes o null (ej. `water` sin
+// boyas activas todavía) — los adapters de components/charts/adapters.ts asumen arrays,
+// así que se normaliza acá, en el único punto por el que pasan todos los llamadores
+// (page.tsx y app/api/data/history/route.ts), en vez de guardar cada adapter por separado.
 export const getHistory = (days = 30) =>
-  backendFetch<HistoryResponse>(`/data/history?days=${days}`, undefined, READ_REVALIDATE);
+  backendFetch<Partial<HistoryResponse>>(`/data/history?days=${days}`, undefined, READ_REVALIDATE).then(
+    (data): HistoryResponse => ({
+      weather: data.weather ?? [],
+      semaphore: data.semaphore ?? [],
+      satellite: data.satellite ?? [],
+      captura: data.captura ?? [],
+      water: data.water ?? [],
+      ideam_precipitacion: data.ideam_precipitacion ?? [],
+      ideam_nivel_rio: data.ideam_nivel_rio ?? [],
+    })
+  );
 
 // ── Estado actual (snapshot) ────────────────────────────────────────────────────
 
@@ -216,9 +230,28 @@ export interface PulsoAguaDulce {
   estimacion: boolean;
 }
 
+// Outlook convectivo — nunca es medición ni dispara alerta, solo panel/24-48h.
+export interface VendavalSignal {
+  nivel: "alto" | "medio" | "bajo" | null;
+  score: number | null; // ausente (null) solo si nivel es null
+  estimacion: boolean;
+}
+
+export type Rumbo = "norte" | "noreste" | "este" | "sureste" | "sur" | "suroeste" | "oeste" | "noroeste";
+
+// Sistema convectivo real acercándose (descargas GLM) — sí corresponde a una alerta activa.
+export interface TormentaSignal {
+  eta_min: number;
+  rumbo: Rumbo;
+  distancia_km: number;
+  n_descargas: number;
+}
+
 export interface Senales {
   anoxia: AnoxiaSignal;
   pulso_agua_dulce: PulsoAguaDulce | null;
+  vendaval: VendavalSignal | null;
+  tormenta: TormentaSignal | null;
 }
 
 export interface DashboardSnapshot {
