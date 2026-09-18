@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import { Botanical, SealLogo } from "@/components/ui/botanical";
 import { Pill, StatusDot } from "@/components/ui/primitives";
-import type { ApiStatus, CycloneAlert } from "@/lib/api";
+import { formatTooltipHeader } from "@/components/charts/time-format";
+import type { ApiStatus, CycloneAlert, TormentaSignal } from "@/lib/api";
 
 const NAV = [
   { id: "mapa", icon: "map", label: "Mapa" },
@@ -31,7 +32,7 @@ function toggleTheme() {
   const isDark = root.getAttribute("data-palette") === "nocturno";
   if (isDark) {
     root.removeAttribute("data-palette");
-    localStorage.removeItem("cr-palette");
+    localStorage.setItem("cr-palette", "claro");
   } else {
     root.setAttribute("data-palette", "nocturno");
     localStorage.setItem("cr-palette", "nocturno");
@@ -41,10 +42,12 @@ function toggleTheme() {
 export function DashboardShell({
   apis,
   cycloneAlerts = [],
+  tormenta = null,
   children,
 }: {
   apis: ApiStatus[];
   cycloneAlerts?: CycloneAlert[];
+  tormenta?: TormentaSignal | null;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -68,7 +71,7 @@ export function DashboardShell({
         <div className="cr-sb-top">
           <SealLogo size={collapsed ? 40 : 42} />
           <div className="cr-sb-titlewrap">
-            <div className="cr-sb-title">CienRayas</div>
+            <div className="cr-sb-title">CienaRed</div>
             <div className="cr-sb-sub">Ciénaga Grande · Santa Marta</div>
           </div>
         </div>
@@ -111,10 +114,17 @@ export function DashboardShell({
               <Icon name="sliders" size={18} />
             </button>
             <div className="cr-bread">
-              CienRayas <Icon name="chevron" size={13} style={{ opacity: 0.4 }} /> <b>{VIEW_TITLE[view]}</b>
+              CienaRed <Icon name="chevron" size={13} style={{ opacity: 0.4 }} /> <b>{VIEW_TITLE[view]}</b>
             </div>
           </div>
           <div className="cr-sys">
+            {tormenta && (
+              <Pill tone="rojo" dot pulse>
+                <span title={`${tormenta.distancia_km} km · ${tormenta.n_descargas} descargas`}>
+                  Tormenta desde el {tormenta.rumbo} · ETA {tormenta.eta_min} min
+                </span>
+              </Pill>
+            )}
             {cycloneAlerts.length > 0 && (
               <Pill tone="rojo" dot pulse>
                 <span title={cycloneAlerts.map((c) => c.title).join(" · ")}>
@@ -123,7 +133,7 @@ export function DashboardShell({
               </Pill>
             )}
             {apis.map((a) => (
-              <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${a.actualizado}`}>
+              <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${formatTooltipHeader(a.actualizado, "hour")}`}>
                 <StatusDot tone={apiTone(a.estado)} size={8} pulse={a.estado !== "ok"} />
                 {a.nombre}
               </span>

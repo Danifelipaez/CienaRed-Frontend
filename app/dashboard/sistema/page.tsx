@@ -1,7 +1,8 @@
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
-import { MetricGrid, MetricTile, MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
+import { MetricGrid, MetricTile, MonoChip, nivelTone, Pill, StatusDot, VENDAVAL_LABEL } from "@/components/ui/primitives";
 import { BackendError } from "@/components/ui/backend-error";
+import { formatTooltipHeader } from "@/components/charts/time-format";
 import {
   backendFetchAdmin,
   getLatestSnapshot,
@@ -16,10 +17,6 @@ function estTone(e: ApiStatus["estado"]) {
 }
 function estLabel(e: ApiStatus["estado"]) {
   return e === "ok" ? "Operativo" : e === "degradado" ? "Degradado" : "Caído";
-}
-
-function nivelTone(n: "alto" | "medio" | "bajo" | null) {
-  return n === "alto" ? "rojo" : n === "medio" ? "amarillo" : "verde";
 }
 
 async function getSystemStatus(): Promise<SystemStatusResponse | null> {
@@ -47,6 +44,7 @@ export default async function SistemaPage() {
 
   const anoxia = snapshot?.senales.anoxia;
   const pulso = snapshot?.senales.pulso_agua_dulce;
+  const vendaval = snapshot?.senales.vendaval;
 
   return (
     <div className="cr-content-scroll">
@@ -81,7 +79,7 @@ export default async function SistemaPage() {
               <Pill tone={estTone(a.estado)}>{estLabel(a.estado)}</Pill>
             </div>
             <div className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name="history" size={12} /> Actualizado {a.actualizado}
+              <Icon name="history" size={12} /> Actualizado {formatTooltipHeader(a.actualizado, "hour")}
             </div>
           </Card>
         ))}
@@ -120,6 +118,20 @@ export default async function SistemaPage() {
                   sub={pulso.mensaje}
                 />
               )}
+              {vendaval && (
+                <MetricTile
+                  label="Vendaval (outlook 24-48h)"
+                  value={vendaval.score != null ? vendaval.score : "—"}
+                  unit={vendaval.score != null ? "/100" : undefined}
+                  sub={
+                    vendaval.nivel ? (
+                      <Pill tone={nivelTone(vendaval.nivel)}>condiciones {VENDAVAL_LABEL[vendaval.nivel]}</Pill>
+                    ) : (
+                      "Sin pronóstico convectivo"
+                    )
+                  }
+                />
+              )}
             </MetricGrid>
             <p className="mono" style={{ fontSize: 10.5, color: "var(--ink-faint)", marginTop: 14 }}>
               Estimación, no medición — umbrales sin validar contra un evento real todavía.
@@ -131,7 +143,7 @@ export default async function SistemaPage() {
           <div className="cr-alert-log">
             {status.log_alertas.map((al, i) => (
               <div key={i} className="cr-alert-row">
-                <div className="cr-alert-time mono">{al.hora}</div>
+                <div className="cr-alert-time mono">{formatTooltipHeader(al.hora, "hour")}</div>
                 <span style={{ marginTop: 3 }}>
                   <StatusDot tone={al.tipo === "red" || al.tipo === "rojo" ? "rojo" : al.tipo === "yellow" || al.tipo === "amarillo" ? "amarillo" : "verde"} pulse={al.tipo === "red" || al.tipo === "rojo"} />
                 </span>

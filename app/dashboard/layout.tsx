@@ -6,6 +6,7 @@ import {
   type ApiStatus,
   type CycloneAlert,
   type SystemStatusResponse,
+  type TormentaSignal,
 } from "@/lib/api";
 
 // Todo /dashboard/* depende de datos en vivo del backend (puntos, semáforo, IA,
@@ -24,19 +25,19 @@ async function getApiStatuses(): Promise<ApiStatus[]> {
   }
 }
 
-async function getCycloneAlerts(): Promise<CycloneAlert[]> {
+async function getSnapshotAlerts(): Promise<{ cycloneAlerts: CycloneAlert[]; tormenta: TormentaSignal | null }> {
   try {
     const snapshot = await getLatestSnapshot();
-    return snapshot.cyclone_alerts;
+    return { cycloneAlerts: snapshot.cyclone_alerts, tormenta: snapshot.senales.tormenta };
   } catch {
-    return [];
+    return { cycloneAlerts: [], tormenta: null };
   }
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [apis, cycloneAlerts] = await Promise.all([getApiStatuses(), getCycloneAlerts()]);
+  const [apis, { cycloneAlerts, tormenta }] = await Promise.all([getApiStatuses(), getSnapshotAlerts()]);
   return (
-    <DashboardShell apis={apis} cycloneAlerts={cycloneAlerts}>
+    <DashboardShell apis={apis} cycloneAlerts={cycloneAlerts} tormenta={tormenta}>
       {children}
     </DashboardShell>
   );

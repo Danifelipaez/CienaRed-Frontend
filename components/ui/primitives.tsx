@@ -254,6 +254,16 @@ export function MetricTile({
   );
 }
 
+export function nivelTone(n: "alto" | "medio" | "bajo" | null): PillTone {
+  return n === "alto" ? "rojo" : n === "medio" ? "amarillo" : "verde";
+}
+
+export const VENDAVAL_LABEL: Record<"alto" | "medio" | "bajo", string> = {
+  alto: "altas",
+  medio: "moderadas",
+  bajo: "favorables",
+};
+
 const TREND_ARROW: Record<"subiendo" | "bajando" | "estable", string> = {
   subiendo: "▲",
   bajando: "▼",
