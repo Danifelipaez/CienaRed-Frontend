@@ -274,7 +274,7 @@ html, body {
   padding:13px 17px;cursor:pointer;color:var(--verde);font-family:var(--font-display);font-style:italic;font-size:14.5px;transition:background .15s}
 .cr-sug-q:hover{filter:brightness(.97)}
 .cr-ia-input{display:flex;gap:11px;align-items:center;padding:16px 32px 22px;position:relative;z-index:1;border-top:1px solid var(--border-2);background:var(--surface)}
-.cr-ia-input input{flex:1;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:14px 22px;font-size:14px;font-family:var(--font-display);font-style:italic;color:var(--ink);outline:none}
+.cr-ia-input input{flex:1;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:14px 22px;font-size:16px;font-family:var(--font-display);font-style:italic;color:var(--ink);outline:none}
 .cr-ia-input input:focus{border-color:var(--teal)}
 .cr-ia-input button{width:46px;height:46px;border-radius:50%;border:none;background:var(--verde-btn);color:#fff;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:background .15s}
 .cr-ia-input button:hover{background:var(--verde-btn-h)}
@@ -319,4 +319,10 @@ html, body {
   .cr-sys{display:none}
   .cr-map-search{max-width:80%}
   .cr-ctx{display:none}
+  .cr-ia-head{padding:14px 16px 0;flex-direction:column;align-items:flex-start;gap:8px}
+  .cr-ia-head h1{display:none}
+  .cr-ia-new{align-self:flex-end}
+  .cr-badge-aviso{margin:10px 16px 0;padding:8px 12px;font-size:11px}
+  .cr-ia-thread{padding:14px 16px 10px}
+  .cr-ia-input{padding:12px 16px 16px}
 }
