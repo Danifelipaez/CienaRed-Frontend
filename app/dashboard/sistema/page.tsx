@@ -42,6 +42,12 @@ export default async function SistemaPage() {
     return <BackendError title="Estado del sistema" />;
   }
 
+  // El estado global es el peor de las fuentes: una caída manda sobre un degradado.
+  const peor: ApiStatus["estado"] = status.apis.some((a) => a.estado === "caido")
+    ? "caido"
+    : status.apis.some((a) => a.estado === "degradado")
+      ? "degradado"
+      : "ok";
   const anoxia = snapshot?.senales.anoxia;
   const pulso = snapshot?.senales.pulso_agua_dulce;
   const vendaval = snapshot?.senales.vendaval;
@@ -53,8 +59,8 @@ export default async function SistemaPage() {
           <h1 className="serif cr-page-title">Estado del sistema</h1>
           <p className="mono cr-page-sub">Fuentes conectadas · bot comunitario · alertas</p>
         </div>
-        <Pill tone="verde" dot>
-          Sistema operativo
+        <Pill tone={estTone(peor)} dot pulse={peor !== "ok"}>
+          {peor === "ok" ? "Sistema operativo" : peor === "degradado" ? "Sistema degradado" : "Fuente caída"}
         </Pill>
       </header>
 
