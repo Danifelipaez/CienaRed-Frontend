@@ -93,14 +93,6 @@ export function DashboardShell({
             <Icon name="moon" size={19} />
             <span className="cr-label">Modo noche</span>
           </button>
-          <button className="cr-nav-item">
-            <Icon name="settings" size={19} />
-            <span className="cr-label">Ajustes</span>
-          </button>
-          <button className="cr-nav-item">
-            <Icon name="help" size={19} />
-            <span className="cr-label">Soporte</span>
-          </button>
         </div>
       </nav>
 

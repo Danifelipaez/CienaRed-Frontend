@@ -113,6 +113,8 @@ html, body {
 .leaflet-bar a:last-child { border-radius: 0 0 9px 9px; }
 .leaflet-control-zoom a:hover { background: var(--surface-3); }
 .leaflet-control-attribution { background: rgba(255,255,255,.7); font-size: 10px; font-family: var(--font-mono); }
+/* OSM no tiene variante oscura: se invierte el tile en vez de pedir otro proveedor. */
+:root[data-palette="nocturno"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.85); }
 :root[data-palette="nocturno"] .leaflet-control-attribution { background: rgba(20,30,28,.7); color:#9DAAA4; }
 .cr-popup .leaflet-popup-content-wrapper {
   background: var(--surface); color: var(--ink); border-radius: var(--radius);
@@ -316,7 +318,10 @@ html, body {
   .cr-sidebar.mobile-open{transform:translateX(0)}
   .cr-hamburger{display:grid}
   .cr-collapse{display:none}
-  .cr-sys{display:none}
+  /* Las alertas (tormenta/ciclón) siguen visibles en móvil; solo se ocultan las APIs. */
+  .cr-header{height:auto;min-height:var(--header-h);flex-wrap:wrap;padding:8px 16px}
+  .cr-sys-item{display:none}
+  .cr-sys{gap:8px;flex-wrap:wrap}
   .cr-map-search{max-width:80%}
   .cr-ctx{display:none}
   .cr-ia-head{padding:14px 16px 0;flex-direction:column;align-items:flex-start;gap:8px}

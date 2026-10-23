@@ -8,6 +8,7 @@ import { StatusDot, SectionLabel, MonoChip, Toggle } from "@/components/ui/primi
 import { MoonGlyph } from "@/components/ui/charts";
 import type { PuntoPesca, Especie, ZonaSedimentacion } from "@/lib/api";
 import type { EstacionSnapshot } from "@/lib/stations";
+import { moonPhaseGlyph, moonPhaseLabel } from "@/lib/moon";
 
 const CR_CENTER: [number, number] = [10.86, -74.43];
 
@@ -128,9 +129,10 @@ export default function MapaView({
   });
   const [query, setQuery] = useState("");
   const [showSug, setShowSug] = useState(false);
-  const [variable, setVariable] = useState("temp");
   const [especie, setEspecie] = useState("all");
   const [faseLuna, setFaseLuna] = useState(false);
+  // Leaflet carga async: los efectos de capas/filtros esperan a que el mapa exista.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -148,9 +150,10 @@ export default function MapaView({
         maxZoom: 15,
       });
       L.control.zoom({ position: "topright" }).addTo(map);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: "© OpenStreetMap · © CARTO",
-        subdomains: "abcd",
+      // ponytail: tiles públicos de OSM (CARTO ahora exige API key). La política de
+      // uso de OSM no admite tráfico alto — pasar a un proveedor con key si crece.
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
         maxZoom: 19,
       }).addTo(map);
 
@@ -225,6 +228,7 @@ export default function MapaView({
         setCenter([c.lat, c.lng]);
       });
       mapRef.current = map;
+      setReady(true);
       setTimeout(() => map.invalidateSize(), 60);
     });
 
@@ -246,7 +250,15 @@ export default function MapaView({
         pane.style.pointerEvents = on ? "auto" : "none";
       }
     });
-  }, [layers]);
+  }, [layers, ready]);
+
+  // Filtro de especie: atenúa los marcadores que no la tienen en vez de ocultarlos.
+  useEffect(() => {
+    Object.entries(markerRef.current).forEach(([id, m]) => {
+      const p = puntos.find((x) => x.id === id);
+      m.setOpacity(especie === "all" || p?.especies.includes(especie) ? 1 : 0.25);
+    });
+  }, [especie, ready, puntos]);
 
   useEffect(() => {
     Object.entries(markerRef.current).forEach(([id, m]) => {
@@ -275,6 +287,7 @@ export default function MapaView({
   }
 
   const especiesFiltradas = especie === "all" ? puntos : puntos.filter((p) => p.especies.includes(especie));
+  const fase = moonPhaseGlyph(new Date());
 
   const capas = [
     { id: "sst", icon: "thermometer", nombre: "Temp. superficial", sub: "NASA MODIS", tone: "rojo" },
@@ -350,18 +363,6 @@ export default function MapaView({
         </div>
 
         <div className="cr-map-panel-body">
-          <div className="cr-mini-card">
-            <SectionLabel>Ventana de observación</SectionLabel>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7 }}>
-              <span style={{ color: "var(--verde)", display: "flex" }}>
-                <Icon name="calendar" size={16} />
-              </span>
-              <span className="mono" style={{ fontSize: 13, color: "var(--ink)" }}>
-                Últimos 30 días
-              </span>
-            </div>
-          </div>
-
           <SectionLabel style={{ margin: "4px 0 2px" }}>Capas de datos</SectionLabel>
           {capas.map((c) => (
             <div key={c.id} className="cr-layer-row">
@@ -386,14 +387,6 @@ export default function MapaView({
 
           <SectionLabel style={{ margin: "8px 0 2px" }}>Filtros</SectionLabel>
           <div className="cr-mini-card" style={{ display: "grid", gap: 12 }}>
-            <label className="cr-field">
-              <span className="mono cr-field-lbl">Variable ambiental</span>
-              <select value={variable} onChange={(e) => setVariable(e.target.value)} className="cr-select">
-                <option value="temp">Temperatura superficial</option>
-                <option value="clorofila">Clorofila-a</option>
-                <option value="viento">Viento</option>
-              </select>
-            </label>
             <label className="cr-field">
               <span className="mono cr-field-lbl">Especie objetivo</span>
               <select value={especie} onChange={(e) => setEspecie(e.target.value)} className="cr-select">
@@ -420,9 +413,9 @@ export default function MapaView({
                 style={{ fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 8, background: "var(--surface-3)", padding: "7px 10px", borderRadius: 8 }}
               >
                 <svg width="18" height="18" viewBox="0 0 22 22">
-                  <MoonGlyph phase="full" size={18} active />
+                  <MoonGlyph phase={fase} size={18} active />
                 </svg>
-                Luna llena · mareas vivas
+                Luna {moonPhaseLabel(fase).toLowerCase()} · {fase === "new" || fase === "full" ? "mareas vivas" : "mareas muertas"}
               </div>
             )}
             {especie !== "all" && (
