@@ -196,7 +196,8 @@ export default function MapaView({
           maxZoom: 15,
           opacity: SATELITE[k].opacity,
           attribution: SATELITE[k].attribution,
-          ...(k === "lluvia" && { bounds: RADAR_BOUNDS }),
+          // minNativeZoom: si el mapa baja de z9 (pasa en producción), sigue usando las teselas z9.
+          ...(k === "lluvia" && { bounds: RADAR_BOUNDS, minNativeZoom: SATELITE.lluvia.nivel }),
         });
       });
 

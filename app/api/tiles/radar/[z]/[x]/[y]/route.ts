@@ -19,8 +19,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ z: stri
   const res = await fetch(`https://maps.api.xweather.com/${id}_${secret}/radar-global/${z}/${x}/${y}/current.png`, {
     next: { revalidate: CACHE_S },
   });
-  // No se reenvía el cuerpo del error: podría repetir la URL con la clave.
-  if (!res.ok) return new Response(null, { status: res.status === 404 ? 404 : 502 });
+  // No se reenvía ni se registra el cuerpo del error: podría repetir la URL con la clave.
+  if (!res.ok) {
+    console.error(`Xweather radar ${z}/${x}/${y}: HTTP ${res.status}`);
+    return new Response(null, { status: res.status === 404 ? 404 : 502 });
+  }
 
   return new Response(await res.arrayBuffer(), {
     headers: {
