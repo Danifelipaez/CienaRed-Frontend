@@ -7,7 +7,14 @@ import { getUserId } from "@/lib/user-id";
 import type { AIConversationItem, AskResponse } from "@/lib/api";
 
 // Un turno del hilo visible: la pregunta y su respuesta (null mientras la IA piensa).
-type Turn = { pregunta: string; response: AskResponse | null };
+type Turn = { pregunta: string; response: AskResponse | null; error?: boolean };
+
+// Puntos de partida para el estado vacío — preguntas que la IA puede responder con los datos del snapshot.
+const EJEMPLOS = [
+  "¿Cómo está el viento hoy en la Ciénaga?",
+  "¿Hay condiciones favorables para salir a pescar mañana?",
+  "¿Qué indica la clorofila-a de esta semana?",
+];
 
 // Decorativo — fuentes que alimentan el análisis, no proviene de un endpoint (ver plan de puerto Next.js).
 const IA_CONTEXTO = [
@@ -110,15 +117,17 @@ function AssistantAnswer({
   showBlock,
   showSuggestion,
   onAsk,
+  error = false,
 }: {
   response: AskResponse;
   showBlock: (i: number) => boolean;
   showSuggestion: boolean;
   onAsk: (q: string) => void;
+  error?: boolean;
 }) {
   const parrafos = response.parrafos ?? [];
   return (
-    <AIBlock label="Análisis · CienaRed IA">
+    <AIBlock label={error ? "Error de conexión" : "Análisis · CienaRed IA"}>
       {parrafos.map(
         (p, i) =>
           showBlock(i) && (
@@ -266,11 +275,12 @@ export function IAView() {
       // backend (p. ej. 403 por admin key), mostrar una limitación y cerrar el turno.
       setTurns((ts) =>
         withLastResponse(ts, {
-          parrafos: [{ tipo: "limitaciones", titulo: "No disponible", html: "No se pudo obtener la respuesta del sistema. Intenta de nuevo en un momento.", items: null }],
+          parrafos: [{ tipo: "limitaciones", titulo: "No disponible", html: "No se pudo obtener la respuesta del sistema. Tu pregunta sigue en el campo de abajo: envíala de nuevo en un momento.", items: null }],
           sugerencia: null,
           conversation_id: conversationId ?? "",
-        })
+        }).map((t, i, arr) => (i === arr.length - 1 ? { ...t, error: true } : t))
       );
+      setInput(q); // no obligar a reescribir la pregunta para reintentar
       setStage(99);
       return;
     }
@@ -362,6 +372,14 @@ export function IAView() {
               La IA responde con los datos ambientales disponibles y recuerda el hilo de tu
               conversación.
             </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 460, marginTop: 8 }}>
+              {EJEMPLOS.map((q) => (
+                <button key={q} type="button" className="cr-sug-q" onClick={() => ask(q)}>
+                  <span>{q}</span>
+                  <Icon name="arrowRight" size={16} />
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -379,7 +397,7 @@ export function IAView() {
                 </AIBlock>
               )}
               {turn.response && (!isLast || stage >= 1) && (
-                <AssistantAnswer response={turn.response} showBlock={showBlock} showSuggestion={isLast} onAsk={ask} />
+                <AssistantAnswer response={turn.response} showBlock={showBlock} showSuggestion={isLast} onAsk={ask} error={turn.error} />
               )}
             </div>
           );
@@ -387,8 +405,13 @@ export function IAView() {
       </div>
 
       <form className="cr-ia-input" onSubmit={submit}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Escribe tu pregunta al sistema…" />
-        <button type="submit" aria-label="Enviar" disabled={stage >= 0 && stage < 99}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Escribe tu pregunta al sistema…"
+          aria-label="Tu pregunta"
+        />
+        <button type="submit" aria-label="Enviar" disabled={!input.trim() || (stage >= 0 && stage < 99)}>
           <Icon name="arrowRight" size={18} />
         </button>
       </form>
@@ -406,7 +429,14 @@ export function IAView() {
         <div className="cr-hist-list">
           {histError && historial.length === 0 && (
             <p style={{ fontSize: 12, color: "var(--ink-faint)", padding: "8px 4px" }}>
-              No se pudo cargar el historial.
+              No se pudo cargar el historial.{" "}
+              <button
+                type="button"
+                onClick={() => refreshHistory(getUserId())}
+                style={{ border: "none", background: "none", padding: 0, color: "var(--teal)", cursor: "pointer", font: "inherit", textDecoration: "underline" }}
+              >
+                Reintentar
+              </button>
             </p>
           )}
           {historial.map((h) => {
