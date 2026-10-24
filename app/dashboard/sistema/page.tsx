@@ -19,6 +19,31 @@ function estLabel(e: ApiStatus["estado"]) {
   return e === "ok" ? "Operativo" : e === "degradado" ? "Degradado" : "Caído";
 }
 
+const ALERTAS_VISIBLES = 10;
+
+// Registro histórico: sin pulso (el pulso se reserva para alertas en vivo) y el conteo de
+// destinatarios solo se resalta cuando la alerta llegó a alguien.
+function alertRow(al: SystemStatusResponse["log_alertas"][number], i: number) {
+  return (
+    <div key={i} className="cr-alert-row">
+      <div className="cr-alert-time mono">{formatTooltipHeader(al.hora, "hour")}</div>
+      <span style={{ marginTop: 3 }}>
+        <StatusDot tone={al.tipo === "red" || al.tipo === "rojo" ? "rojo" : al.tipo === "yellow" || al.tipo === "amarillo" ? "amarillo" : "verde"} />
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{al.zonas}</span>
+          <MonoChip>{al.canal}</MonoChip>
+          {al.destinatarios != null && (
+            <MonoChip tone={al.destinatarios > 0 ? "teal" : "neutral"}>{al.destinatarios} destinatarios</MonoChip>
+          )}
+        </div>
+        <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{al.texto}</p>
+      </div>
+    </div>
+  );
+}
+
 async function getSystemStatus(): Promise<SystemStatusResponse | null> {
   try {
     return await backendFetchAdmin<SystemStatusResponse>("/dashboard/system-status", undefined, READ_REVALIDATE);
@@ -68,7 +93,7 @@ export default async function SistemaPage() {
         {status.apis.map((a) => (
           <Card
             key={a.id}
-            span={4}
+            span={status.apis.length <= 2 ? 6 : 4}
             pad={20}
             accent={a.estado === "ok" ? "var(--verde-sem)" : a.estado === "degradado" ? "var(--amarillo)" : "var(--rojo)"}
           >
@@ -146,24 +171,22 @@ export default async function SistemaPage() {
         )}
 
         <Card title="Alertas recientes" label="Enviadas a WhatsApp" span={12} icon="system">
-          <div className="cr-alert-log">
-            {status.log_alertas.map((al, i) => (
-              <div key={i} className="cr-alert-row">
-                <div className="cr-alert-time mono">{formatTooltipHeader(al.hora, "hour")}</div>
-                <span style={{ marginTop: 3 }}>
-                  <StatusDot tone={al.tipo === "red" || al.tipo === "rojo" ? "rojo" : al.tipo === "yellow" || al.tipo === "amarillo" ? "amarillo" : "verde"} pulse={al.tipo === "red" || al.tipo === "rojo"} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{al.zonas}</span>
-                    <MonoChip>{al.canal}</MonoChip>
-                    {al.destinatarios != null && <MonoChip tone="teal">{al.destinatarios} destinatarios</MonoChip>}
-                  </div>
-                  <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{al.texto}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {status.log_alertas.length === 0 ? (
+            <Pill tone="neutral">Sin alertas enviadas todavía</Pill>
+          ) : (
+            <div className="cr-alert-log">
+              {status.log_alertas.slice(0, ALERTAS_VISIBLES).map(alertRow)}
+              {/* <details> nativo: el historial completo sigue a un clic sin estado de cliente. */}
+              {status.log_alertas.length > ALERTAS_VISIBLES && (
+                <details>
+                  <summary className="mono" style={{ cursor: "pointer", fontSize: 12, color: "var(--teal)", padding: "12px 0 0" }}>
+                    Ver {status.log_alertas.length - ALERTAS_VISIBLES} alertas anteriores
+                  </summary>
+                  {status.log_alertas.slice(ALERTAS_VISIBLES).map(alertRow)}
+                </details>
+              )}
+            </div>
+          )}
         </Card>
       </CardGrid>
     </div>

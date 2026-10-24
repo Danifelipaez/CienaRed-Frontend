@@ -23,7 +23,7 @@ type Tone = "neutral" | "teal" | "sediment";
 export function MonoChip({ children, tone = "neutral" }: { children: ReactNode; tone?: Tone }) {
   const tones: Record<Tone, { bg: string; fg: string }> = {
     neutral: { bg: "var(--surface-3)", fg: "var(--ink)" },
-    teal: { bg: "var(--teal-soft)", fg: "var(--teal)" },
+    teal: { bg: "var(--teal-soft)", fg: "color-mix(in srgb, var(--teal) 50%, var(--ink))" },
     sediment: { bg: "var(--sedimento-soft)", fg: "var(--ink)" },
   };
   const t = tones[tone];
@@ -58,12 +58,15 @@ export function Pill({
   dot?: boolean;
   pulse?: boolean;
 }) {
+  // El texto se mezcla con --ink para pasar 4.5:1 sobre el fondo suave en ambos temas
+  // (amarillo puro daba 2.1:1 en claro); el punto conserva el color semántico puro.
+  const ink = (c: string) => `color-mix(in srgb, ${c} 50%, var(--ink))`;
   const tones: Record<PillTone, { bg: string; fg: string; dc: string }> = {
     neutral: { bg: "var(--surface-3)", fg: "var(--ink-soft)", dc: "var(--ink-soft)" },
-    verde: { bg: "var(--verde-sem-soft)", fg: "var(--verde-sem)", dc: "var(--verde-sem)" },
-    amarillo: { bg: "var(--amarillo-soft)", fg: "var(--amarillo)", dc: "var(--amarillo)" },
-    rojo: { bg: "var(--rojo-soft)", fg: "var(--rojo)", dc: "var(--rojo)" },
-    teal: { bg: "var(--teal-soft)", fg: "var(--teal)", dc: "var(--teal)" },
+    verde: { bg: "var(--verde-sem-soft)", fg: ink("var(--verde-sem)"), dc: "var(--verde-sem)" },
+    amarillo: { bg: "var(--amarillo-soft)", fg: ink("var(--amarillo)"), dc: "var(--amarillo)" },
+    rojo: { bg: "var(--rojo-soft)", fg: ink("var(--rojo)"), dc: "var(--rojo)" },
+    teal: { bg: "var(--teal-soft)", fg: ink("var(--teal)"), dc: "var(--teal)" },
   };
   const t = tones[tone];
   return (

@@ -6,6 +6,10 @@ describe("formatDate", () => {
     expect(formatDate("2026-07-08")).toBe("08 Jul");
   });
 
+  it("abbreviates every month to 3 letters (es-CO gives 'sept')", () => {
+    expect(formatDate("2026-09-02")).toBe("02 Sep");
+  });
+
   it("formats a full ISO timestamp in America/Bogota (UTC-5)", () => {
     // 02:00 UTC on the 8th is still the 7th in Bogota — this is exactly the
     // off-by-one the date-only/timestamp split in toDateAndZone prevents.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { formatAxisTick, formatTooltipHeader, type ChartGranularity } from "@/components/charts/time-format";
+// Ruta relativa (no "@/"): vitest no tiene el alias y charts.test.ts importa este archivo.
+import { formatAxisTick, formatTooltipHeader, type ChartGranularity } from "../charts/time-format";
 
 export type SeriesPoint = { t: string; v: number };
 export type MultiSeries = { label: string; color: string; data: SeriesPoint[] };
@@ -23,6 +24,16 @@ export function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
 
 function fmtAxisValue(v: number): string {
   return Math.abs(v) >= 100 ? String(Math.round(v)) : v.toFixed(1);
+}
+
+/** ~`target` marcas en múltiplos "redondos" (1, 2, 2.5, 5 × 10^k) que cubren [lo, hi]. */
+export function niceTicks(lo: number, hi: number, target = 4): number[] {
+  const raw = (hi - lo || 1) / target;
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)!;
+  const start = Math.floor(lo / step) * step;
+  const n = Math.max(1, Math.round((Math.ceil(hi / step) * step - start) / step));
+  return Array.from({ length: n + 1 }, (_, i) => +(start + i * step).toFixed(10));
 }
 
 /** Dominio con 20% de margen sobre el rango real de los datos (para que cambios pequeños se noten). */
@@ -81,13 +92,18 @@ export function TimeSeriesChart({
   const now = useMemo(() => nowCategory(granularity), [granularity]);
   const categories = Array.from(new Set([...series.flatMap((s) => s.data.map((d) => d.t)), now])).sort();
   const vals = series.flatMap((s) => s.data.map((d) => d.v));
-  const [mn, mx] = paddedDomain(vals.length ? vals : [0, 1], yMin, yMax);
+  const [lo, hi] = paddedDomain(vals.length ? vals : [0, 1], yMin, yMax);
+  // El dominio se extiende hasta las marcas redondas; yMax (ej. pH 14) sigue siendo tope duro.
+  const yTicks = niceTicks(lo, hi).filter((v) => yMax == null || v <= yMax);
+  const mn = yTicks[0];
+  const mx = yMax != null ? Math.min(yTicks[yTicks.length - 1], yMax) : yTicks[yTicks.length - 1];
   const range = mx - mn || 1;
   const iw = Math.max(10, w - padL - padR),
     ih = height - padT - padB;
   const X = (i: number) => padL + (i / Math.max(1, categories.length - 1)) * iw;
   const Y = (v: number) => padT + ih - ((v - mn) / range) * ih;
-  const xTickCount = Math.min(5, categories.length);
+  // Una etiqueta por cada ~95px ("19 Ago 14h") o ~65px ("19 Ago") para que no se monten.
+  const xTickCount = Math.min(5, categories.length, Math.max(2, Math.floor(iw / (granularity === "hour" ? 95 : 65))));
   const xTicks = Array.from(
     new Set(
       Array.from({ length: xTickCount }, (_, k) =>
@@ -95,7 +111,6 @@ export function TimeSeriesChart({
       )
     )
   );
-  const yTicks = [0, 0.25, 0.5, 0.75, 1];
 
   function handleMove(e: React.MouseEvent<SVGSVGElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -121,29 +136,30 @@ export function TimeSeriesChart({
         onMouseLeave={() => setHover(null)}
       >
         {dashGrid &&
-          yTicks.map((g, i) => (
+          yTicks.map((v, i) => (
             <line
               key={i}
               x1={padL}
               x2={w - padR}
-              y1={padT + ih * (1 - g)}
-              y2={padT + ih * (1 - g)}
+              y1={Y(v)}
+              y2={Y(v)}
               stroke="var(--border)"
               strokeWidth="1"
               strokeDasharray="2 5"
             />
           ))}
-        {yTicks.map((g, i) => (
+        {yTicks.map((v, i) => (
           <text
             key={i}
             x={padL - 6}
-            y={padT + ih * (1 - g) + 3}
+            y={Y(v) + 3}
             textAnchor="end"
             className="mono"
             fontSize="10"
             fill="var(--ink-faint)"
           >
-            {fmtAxisValue(mn + range * g)}
+            {/* toFixed(2) + unario: 15 → "15", 2.5 → "2.5", sin ceros sobrantes. */}
+            {+v.toFixed(2)}
           </text>
         ))}
         {series.map((s, si) => {
