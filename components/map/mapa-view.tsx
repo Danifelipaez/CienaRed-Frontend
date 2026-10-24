@@ -16,13 +16,15 @@ const CR_CENTER: [number, number] = [10.86, -74.43];
 // Capas raster sobre el mapa. `nivel` es el zoom nativo máximo: más allá Leaflet escala la tesela.
 // - Nubes: NASA GIBS GOES-East GeoColor (abierto, sin key, ~1 km). El tiempo "default" es la imagen
 //   más reciente y GIBS responde no-cache, así que cada carga trae la última.
-// - Lluvia: Xweather radar-global (radar + estimación satelital donde no hay radar, cada 2 min) a
-//   través de nuestro proxy app/api/tiles/radar, que inyecta la clave server-side.
+// - Lluvia: Xweather radar-global vía nuestro proxy app/api/tiles/radar (inyecta la clave y cachea
+//   20 min para todos). Solo existen las 2 teselas z9 de la Ciénaga: RADAR_BOUNDS evita que Leaflet
+//   pida otras, y nivel 9 hace que las escale en vez de pedir más (cada tesela gasta cuota).
 const GIBS_NUBES =
   "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_GeoColor/default/default/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png";
+const RADAR_BOUNDS: [[number, number], [number, number]] = [[10.55, -75.15], [11.1, -73.9]];
 const SATELITE = {
   nubes: { url: GIBS_NUBES, nivel: 7, opacity: 0.75, attribution: "NASA GIBS" },
-  lluvia: { url: "/api/tiles/radar/{z}/{x}/{y}", nivel: 15, opacity: 0.8, attribution: "Xweather" },
+  lluvia: { url: "/api/tiles/radar/{z}/{x}/{y}", nivel: 9, opacity: 0.8, attribution: "Xweather" },
 } as const;
 type CapaSatelite = keyof typeof SATELITE;
 
@@ -130,6 +132,7 @@ export default function MapaView({
   const markerRef = useRef<Record<string, LeafletType.Marker>>({});
   const satRef = useRef<Partial<Record<CapaSatelite, LeafletType.TileLayer>>>({});
   const [nubesHora, setNubesHora] = useState<string | null>(null);
+  const [radarHora, setRadarHora] = useState<string | null>(null);
   const [center, setCenter] = useState<[number, number]>(CR_CENTER);
   const [selected, setSelected] = useState<PuntoPesca | undefined>(() =>
     puntos.find((p) => p.condicion === "rojo") ?? puntos[0]
@@ -193,6 +196,7 @@ export default function MapaView({
           maxZoom: 15,
           opacity: SATELITE[k].opacity,
           attribution: SATELITE[k].attribution,
+          ...(k === "lluvia" && { bounds: RADAR_BOUNDS }),
         });
       });
 
@@ -299,6 +303,16 @@ export default function MapaView({
       .catch(() => {});
   }, []);
 
+  // Hora del radar: sale de una tesela que el mapa pide igual al encender la capa (misma caché),
+  // así que no gasta cuota extra. Solo se consulta si alguien enciende la capa.
+  useEffect(() => {
+    if (!layers.lluvia || radarHora) return;
+    fetch("/api/tiles/radar/9/150/240", { method: "HEAD" })
+      .then((r) => r.headers.get("x-radar-hora"))
+      .then((t) => t && setRadarHora(new Date(t).toISOString()))
+      .catch(() => {});
+  }, [layers.lluvia, radarHora]);
+
   // Filtro de especie: atenúa los marcadores que no la tienen en vez de ocultarlos.
   useEffect(() => {
     Object.entries(markerRef.current).forEach(([id, m]) => {
@@ -348,7 +362,7 @@ export default function MapaView({
       id: "lluvia",
       icon: "droplet",
       nombre: "Lluvia (radar)",
-      sub: "Xweather · radar + satélite, cada 2 min",
+      sub: `Xweather · ${radarHora ? formatTooltipHeader(radarHora, "hour") : "cada 20 min"}`,
       tone: "teal",
     },
     { id: "sst", icon: "thermometer", nombre: "Temp. superficial", sub: "NASA MODIS", tone: "rojo" },
