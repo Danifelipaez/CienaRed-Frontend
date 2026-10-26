@@ -43,24 +43,19 @@ export function sistemaLabel(s: string): string {
   return (SISTEMA_LABEL as Record<string, string>)[s] ?? s.replace(/_/g, " ");
 }
 
-function filaProb(
-  id: "24h" | "6h",
-  etiqueta: string,
-  prob: number | null | undefined,
-  nivel: "alto" | "medio" | "bajo" | null | undefined
-): LluviaFila {
+// Mismos cortes que el backend (rain_signals.py::lluvia_outlook), pero por fila: el `nivel` del
+// backend es el peor de 6 h y 24 h, y pintado en una sola fila contradiría su porcentaje.
+function nivelDe(p: number): "alto" | "medio" | "bajo" {
+  return p >= 0.5 ? "alto" : p >= 0.3 ? "medio" : "bajo";
+}
+
+function filaProb(id: "24h" | "6h", etiqueta: string, prob: number | null | undefined): LluviaFila {
   const valor = formatProb(prob);
-  if (valor === null) {
+  if (valor === null || prob == null) {
     return { id, etiqueta, valor: null, texto: "Sin pronóstico", tone: "neutral", pulse: false };
   }
-  return {
-    id,
-    etiqueta,
-    valor,
-    texto: nivel ? NIVEL_TEXTO[nivel] : "Probabilidad de lluvia",
-    tone: nivel ? NIVEL_TONE[nivel] : "neutral",
-    pulse: false,
-  };
+  const nivel = nivelDe(prob);
+  return { id, etiqueta, valor, texto: NIVEL_TEXTO[nivel], tone: NIVEL_TONE[nivel], pulse: false };
 }
 
 function filaNowcast(nowcast: LluviaSignal["nowcast"]): LluviaFila {
@@ -70,7 +65,7 @@ function filaNowcast(nowcast: LluviaSignal["nowcast"]): LluviaFila {
   const rayo = nowcast.tormenta_electrica ? " · ⚡ tormenta eléctrica" : "";
   switch (nowcast.estado) {
     case "inminente": {
-      const eta = nowcast.eta_min ? ` (~${nowcast.eta_min} min)` : "";
+      const eta = nowcast.eta_rango_min ? ` (~${nowcast.eta_rango_min[0]}-${nowcast.eta_rango_min[1]} min)` : "";
       return { ...base, texto: `Lluvia fuerte acercándose${eta}${rayo}`, tone: "rojo", pulse: true };
     }
     case "lloviendo":
@@ -110,8 +105,8 @@ export function buildLluviaVista(lluvia: LluviaSignal | null | undefined): Lluvi
   const sistemas = (sinoptico?.sistemas ?? []).map(sistemaLabel);
   return {
     filas: [
-      filaProb("24h", "Próximas 24 h", outlook?.prob_24h, outlook?.nivel),
-      filaProb("6h", "Próximas 6 h", outlook?.prob_6h, null),
+      filaProb("24h", "Próximas 24 h", outlook?.prob_24h),
+      filaProb("6h", "Próximas 6 h", outlook?.prob_6h),
       filaNowcast(nowcast),
     ],
     sistemas,

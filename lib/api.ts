@@ -249,23 +249,26 @@ export interface TormentaSignal {
 
 // Lluvia por antelación. Cada subcampo puede ser null; backends viejos no envían `lluvia`.
 export interface LluviaOutlook {
-  prob_6h: number | null; // 0-1
-  prob_24h: number | null; // 0-1
+  prob_6h?: number; // 0-1; faltan si no hay pronóstico (nivel null)
+  prob_24h?: number; // 0-1
   nivel: "alto" | "medio" | "bajo" | null;
   estimacion: boolean;
-  fuente: string;
+  umbral_mm_6h?: number;
+  n_miembros?: number;
 }
 
 export type NowcastEstado = "lloviendo" | "inminente" | "sin_lluvia" | "sin_dato";
 
 export interface LluviaNowcast {
   estado: NowcastEstado;
-  frac_caja_1mm: number | null;
-  frac_anillo_5mm: number | null;
+  // scan y frac_* faltan en "sin_dato"; eta_rango_min solo viene en "inminente".
+  frac_caja_1mm?: number;
+  frac_anillo_5mm?: number;
   tormenta_electrica: boolean;
-  rayos_100km: number | null;
-  scan: string | null;
-  eta_min: string | null; // rango, ej. "30-60"
+  n_rayos_30min: number;
+  scan?: string;
+  eta_rango_min?: [number, number];
+  estimacion: boolean;
 }
 
 export type SistemaSinoptico = "frente_frio" | "onda_tropical" | "vaguada" | "baja_presion";

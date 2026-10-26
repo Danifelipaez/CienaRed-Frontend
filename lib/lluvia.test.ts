@@ -7,14 +7,14 @@ const nowcast = (over: Partial<LluviaNowcast> = {}): LluviaNowcast => ({
   frac_caja_1mm: 0,
   frac_anillo_5mm: 0,
   tormenta_electrica: false,
-  rayos_100km: 0,
+  n_rayos_30min: 0,
+  estimacion: true,
   scan: "2026-10-26T13:40:00Z",
-  eta_min: null,
   ...over,
 });
 
 const completo: LluviaSignal = {
-  outlook: { prob_6h: 0.35, prob_24h: 0.62, nivel: "medio", estimacion: true, fuente: "GEFS" },
+  outlook: { prob_6h: 0.35, prob_24h: 0.62, nivel: "medio", estimacion: true },
   nowcast: nowcast(),
   sinoptico: { sistemas: ["frente_frio", "onda_tropical"], afecta_cgsm: true, extracto: "x", emitido: null },
 };
@@ -58,19 +58,20 @@ describe("buildLluviaVista", () => {
   it("caso completo: tres filas en orden de antelación", () => {
     const v = buildLluviaVista(completo)!;
     expect(v.filas.map((f) => f.id)).toEqual(["24h", "6h", "1h"]);
-    expect(fila(v, "24h")).toMatchObject({ etiqueta: "Próximas 24 h", valor: "62 %", texto: "Probabilidad media", tone: "amarillo" });
-    expect(fila(v, "6h")).toMatchObject({ etiqueta: "Próximas 6 h", valor: "35 %" });
+    expect(fila(v, "24h")).toMatchObject({ etiqueta: "Próximas 24 h", valor: "62 %", texto: "Probabilidad alta", tone: "rojo" });
+    expect(fila(v, "6h")).toMatchObject({ etiqueta: "Próximas 6 h", valor: "35 %", tone: "amarillo" });
     expect(v.sistemas).toEqual(["frente frío", "onda tropical"]);
     expect(v.afectaCgsm).toBe(true);
     expect(v.esEstimacion).toBe(true);
   });
 
-  it("niveles del outlook -> tono", () => {
-    const tono = (nivel: "bajo" | "medio" | "alto") =>
-      fila(buildLluviaVista({ ...completo, outlook: { ...completo.outlook!, nivel } }), "24h").tone;
-    expect(tono("bajo")).toBe("verde");
-    expect(tono("medio")).toBe("amarillo");
-    expect(tono("alto")).toBe("rojo");
+  it("tono por fila según su propia probabilidad (no el nivel global del backend)", () => {
+    const tono = (prob_24h: number) =>
+      fila(buildLluviaVista({ ...completo, outlook: { ...completo.outlook!, prob_24h, nivel: "alto" } }), "24h").tone;
+    expect(tono(0.29)).toBe("verde");
+    expect(tono(0.3)).toBe("amarillo");
+    expect(tono(0.49)).toBe("amarillo");
+    expect(tono(0.5)).toBe("rojo");
   });
 
   it("outlook null -> filas 24h y 6h sin pronóstico, aún se muestra el nowcast", () => {
@@ -82,16 +83,16 @@ describe("buildLluviaVista", () => {
   });
 
   it("probabilidades individuales null", () => {
-    const v = buildLluviaVista({ ...completo, outlook: { ...completo.outlook!, prob_6h: null, nivel: null } })!;
-    expect(fila(v, "6h").valor).toBeNull();
-    expect(fila(v, "24h")).toMatchObject({ valor: "62 %", texto: "Probabilidad de lluvia", tone: "neutral" });
+    const v = buildLluviaVista({ ...completo, outlook: { nivel: null, estimacion: true } })!;
+    expect(fila(v, "6h")).toMatchObject({ valor: null, texto: "Sin pronóstico" });
+    expect(fila(v, "24h")).toMatchObject({ valor: null, texto: "Sin pronóstico", tone: "neutral" });
   });
 
   describe("nowcast", () => {
     const f = (n: LluviaNowcast | null) => fila(buildLluviaVista({ outlook: null, nowcast: n, sinoptico: { sistemas: ["vaguada"], afecta_cgsm: false, extracto: null, emitido: null } }), "1h");
 
     it("inminente con ETA", () => {
-      expect(f(nowcast({ estado: "inminente", eta_min: "30-60" }))).toMatchObject({
+      expect(f(nowcast({ estado: "inminente", eta_rango_min: [30, 60] }))).toMatchObject({
         texto: "Lluvia fuerte acercándose (~30-60 min)",
         tone: "rojo",
         pulse: true,
@@ -117,7 +118,7 @@ describe("buildLluviaVista", () => {
         tone: "rojo",
         pulse: true,
       });
-      expect(f(nowcast({ estado: "inminente", eta_min: "30-60", tormenta_electrica: true })).texto).toBe(
+      expect(f(nowcast({ estado: "inminente", eta_rango_min: [30, 60], tormenta_electrica: true })).texto).toBe(
         "Lluvia fuerte acercándose (~30-60 min) · ⚡ tormenta eléctrica"
       );
     });
