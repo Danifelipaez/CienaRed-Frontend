@@ -79,13 +79,22 @@ describe("buildLluviaVista", () => {
     expect(fila(v, "24h")).toMatchObject({ valor: null, texto: "Sin pronóstico", tone: "neutral" });
     expect(fila(v, "6h")).toMatchObject({ valor: null, texto: "Sin pronóstico" });
     expect(fila(v, "1h").texto).toBe("Sin lluvia cerca");
-    expect(v.esEstimacion).toBe(true);
+    expect(v.esEstimacion).toBe(false); // sin probabilidades no hay nada que etiquetar como estimación
   });
 
   it("probabilidades individuales null", () => {
     const v = buildLluviaVista({ ...completo, outlook: { nivel: null, estimacion: true } })!;
     expect(fila(v, "6h")).toMatchObject({ valor: null, texto: "Sin pronóstico" });
     expect(fila(v, "24h")).toMatchObject({ valor: null, texto: "Sin pronóstico", tone: "neutral" });
+    expect(v.esEstimacion).toBe(false);
+  });
+
+  it("esEstimacion basta con una de las dos probabilidades", () => {
+    const solo = (prob_6h?: number, prob_24h?: number) =>
+      buildLluviaVista({ ...completo, outlook: { prob_6h, prob_24h, nivel: null, estimacion: true } })!.esEstimacion;
+    expect(solo(0.2)).toBe(true);
+    expect(solo(undefined, 0)).toBe(true);
+    expect(solo()).toBe(false);
   });
 
   describe("nowcast", () => {

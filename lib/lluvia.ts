@@ -1,3 +1,4 @@
+import { nivelTone } from "../components/ui/primitives";
 import type { LluviaSignal, SistemaSinoptico } from "./api";
 
 export type LluviaTone = "neutral" | "verde" | "amarillo" | "rojo" | "teal";
@@ -18,7 +19,7 @@ export interface LluviaVista {
   /** Nombres en español de los sistemas sinópticos activos (vacío si no hay). */
   sistemas: string[];
   afectaCgsm: boolean;
-  /** El outlook es un pronóstico de ensamble: siempre se etiqueta como estimación. */
+  /** Hay un pronóstico de ensamble (probabilidad 6 h o 24 h) en pantalla: se etiqueta como estimación. */
   esEstimacion: boolean;
 }
 
@@ -30,7 +31,6 @@ export const SISTEMA_LABEL: Record<SistemaSinoptico, string> = {
 };
 
 const NIVEL_TEXTO = { bajo: "Probabilidad baja", medio: "Probabilidad media", alto: "Probabilidad alta" } as const;
-const NIVEL_TONE = { bajo: "verde", medio: "amarillo", alto: "rojo" } as const;
 
 /** 0.623 -> "62 %"; null/NaN -> null. Se acota a 0-100. */
 export function formatProb(p: number | null | undefined): string | null {
@@ -55,7 +55,7 @@ function filaProb(id: "24h" | "6h", etiqueta: string, prob: number | null | unde
     return { id, etiqueta, valor: null, texto: "Sin pronóstico", tone: "neutral", pulse: false };
   }
   const nivel = nivelDe(prob);
-  return { id, etiqueta, valor, texto: NIVEL_TEXTO[nivel], tone: NIVEL_TONE[nivel], pulse: false };
+  return { id, etiqueta, valor, texto: NIVEL_TEXTO[nivel], tone: nivelTone(nivel), pulse: false };
 }
 
 function filaNowcast(nowcast: LluviaSignal["nowcast"]): LluviaFila {
@@ -111,6 +111,6 @@ export function buildLluviaVista(lluvia: LluviaSignal | null | undefined): Lluvi
     ],
     sistemas,
     afectaCgsm: sistemas.length > 0 && sinoptico?.afecta_cgsm === true,
-    esEstimacion: outlook ? outlook.estimacion !== false : true,
+    esEstimacion: outlook?.prob_6h != null || outlook?.prob_24h != null,
   };
 }
