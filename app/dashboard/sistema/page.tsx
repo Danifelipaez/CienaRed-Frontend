@@ -47,7 +47,8 @@ function alertRow(al: SystemStatusResponse["log_alertas"][number], i: number) {
 async function getSystemStatus(): Promise<SystemStatusResponse | null> {
   try {
     return await backendFetchAdmin<SystemStatusResponse>("/dashboard/system-status", undefined, READ_REVALIDATE);
-  } catch {
+  } catch (err) {
+    console.error("[sistema] system-status", err);
     return null;
   }
 }
@@ -55,7 +56,8 @@ async function getSystemStatus(): Promise<SystemStatusResponse | null> {
 async function getSnapshot(): Promise<DashboardSnapshot | null> {
   try {
     return await getLatestSnapshot();
-  } catch {
+  } catch (err) {
+    console.error("[sistema] getLatestSnapshot", err);
     return null;
   }
 }
