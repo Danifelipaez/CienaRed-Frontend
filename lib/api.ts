@@ -247,11 +247,48 @@ export interface TormentaSignal {
   n_descargas: number;
 }
 
+// Lluvia por antelación. Cada subcampo puede ser null; backends viejos no envían `lluvia`.
+export interface LluviaOutlook {
+  prob_6h: number | null; // 0-1
+  prob_24h: number | null; // 0-1
+  nivel: "alto" | "medio" | "bajo" | null;
+  estimacion: boolean;
+  fuente: string;
+}
+
+export type NowcastEstado = "lloviendo" | "inminente" | "sin_lluvia" | "sin_dato";
+
+export interface LluviaNowcast {
+  estado: NowcastEstado;
+  frac_caja_1mm: number | null;
+  frac_anillo_5mm: number | null;
+  tormenta_electrica: boolean;
+  rayos_100km: number | null;
+  scan: string | null;
+  eta_min: string | null; // rango, ej. "30-60"
+}
+
+export type SistemaSinoptico = "frente_frio" | "onda_tropical" | "vaguada" | "baja_presion";
+
+export interface LluviaSinoptico {
+  sistemas: SistemaSinoptico[];
+  afecta_cgsm: boolean;
+  extracto: string | null; // texto en inglés del NHC
+  emitido: string | null;
+}
+
+export interface LluviaSignal {
+  outlook: LluviaOutlook | null;
+  nowcast: LluviaNowcast | null;
+  sinoptico: LluviaSinoptico | null;
+}
+
 export interface Senales {
   anoxia: AnoxiaSignal;
   pulso_agua_dulce: PulsoAguaDulce | null;
   vendaval: VendavalSignal | null;
   tormenta: TormentaSignal | null;
+  lluvia?: LluviaSignal | null; // ausente en backends viejos
 }
 
 export interface DashboardSnapshot {
