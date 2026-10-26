@@ -15,6 +15,7 @@ import {
   type VistaClima,
 } from "./adapters";
 import { CHART_SPECS, vistaToGranularity } from "./chart-specs";
+import { buildLluviaVista } from "@/lib/lluvia";
 import { moonPhaseGlyph, moonPhaseLabel, type MoonPhaseGlyph } from "@/lib/moon";
 
 const RANGOS = ["7", "30", "90"] as const;
@@ -150,6 +151,7 @@ export function GraficasView({
 
   const vendaval = snapshot?.senales.vendaval;
   const tormenta = snapshot?.senales.tormenta;
+  const lluvia = useMemo(() => buildLluviaVista(snapshot?.senales.lluvia), [snapshot]);
 
   // Las gráficas sin datos se resumen en un aviso en vez de ocupar filas vacías (la que trae
   // el selector Hora/Día/7 días se queda siempre). La última tarjeta se estira para cerrar la
@@ -333,6 +335,60 @@ export function GraficasView({
                 </p>
               </div>
             </div>
+          </Card>
+        )}
+
+        {lluvia && (
+          <Card title="Lluvia" label="Qué tan probable es que llueva" span={12} icon="droplet">
+            <div className="cr-events">
+              {lluvia.filas.map((f) => (
+                <div key={f.id} className="cr-event-row">
+                  <span style={{ marginTop: 3 }}>
+                    <StatusDot tone={f.tone === "neutral" ? "off" : f.tone} pulse={f.pulse} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                      {f.etiqueta}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                      {f.valor && (
+                        <span className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--ink)", lineHeight: 1 }}>
+                          {f.valor}
+                        </span>
+                      )}
+                      <Pill tone={f.tone} pulse={f.pulse} dot={f.pulse}>
+                        {f.texto}
+                      </Pill>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {lluvia.sistemas.length > 0 && (
+                <div className="cr-event-row">
+                  <span style={{ marginTop: 3 }}>
+                    <StatusDot tone={lluvia.afectaCgsm ? "amarillo" : "off"} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                      Sistemas del tiempo en la región
+                    </span>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+                      {lluvia.sistemas.map((nombre) => (
+                        <MonoChip key={nombre} tone="teal">
+                          {nombre}
+                        </MonoChip>
+                      ))}
+                      {lluvia.afectaCgsm && <Pill tone="amarillo">afecta la Ciénaga</Pill>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {lluvia.esEstimacion && (
+              <p className="mono" style={{ fontSize: 10.5, color: "var(--ink-faint)", marginTop: 14 }}>
+                Las probabilidades de 6 y 24 horas son una estimación, no una medición.
+              </p>
+            )}
           </Card>
         )}
 
