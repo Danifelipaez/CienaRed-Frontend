@@ -150,6 +150,7 @@ export function Toggle({
       role="switch"
       aria-checked={on}
       aria-label={label}
+      className="cr-press"
       onClick={() => onChange(!on)}
       style={{
         width: 42,
@@ -161,7 +162,7 @@ export function Toggle({
         flexShrink: 0,
         background: on ? "var(--teal)" : "var(--surface-3)",
         position: "relative",
-        transition: "background .2s ease",
+        transition: "background-color 200ms ease, transform 160ms var(--ease-out)",
         boxShadow: on ? "none" : "inset 0 0 0 1px var(--border)",
       }}
     >
@@ -169,12 +170,13 @@ export function Toggle({
         style={{
           position: "absolute",
           top: 3,
-          left: on ? 21 : 3,
+          left: 3,
+          transform: on ? "translateX(18px)" : "none",
           width: 18,
           height: 18,
           borderRadius: "50%",
           background: "#fff",
-          transition: "left .22s cubic-bezier(.34,1.4,.6,1)",
+          transition: "transform 200ms var(--ease-out)",
           boxShadow: "0 1px 3px rgba(0,0,0,.2)",
         }}
       />

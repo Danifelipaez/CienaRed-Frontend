@@ -52,6 +52,11 @@
   --header-h: 56px;
 
   --fs-scale: 1;
+
+  /* Curvas de movimiento (Emil Kowalski): las built-in de CSS son demasiado débiles. */
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-in-out: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
 }
 
 /* Paleta alternativa: "Verde" (deriva del spec #4A7C59) */
@@ -112,7 +117,7 @@ html, body {
 .leaflet-bar { border: none; box-shadow: none; }
 .leaflet-bar a:first-child { border-radius: 9px 9px 0 0; }
 .leaflet-bar a:last-child { border-radius: 0 0 9px 9px; }
-.leaflet-control-zoom a:hover { background: var(--surface-3); }
+@media (hover:hover) and (pointer:fine){.leaflet-control-zoom a:hover { background: var(--surface-3); }}
 .leaflet-control-attribution { background: rgba(255,255,255,.7); font-size: 10px; font-family: var(--font-mono); }
 /* OSM no tiene variante oscura: se invierte el tile en vez de pedir otro proveedor. */
 :root[data-palette="nocturno"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.85); }
@@ -125,19 +130,59 @@ html, body {
 .cr-popup .leaflet-popup-tip { background: var(--surface); }
 .cr-popup a.leaflet-popup-close-button { color: var(--ink-faint); padding: 8px 8px 0 0; }
 .cr-marker { background: transparent; border: none; }
-.leaflet-fade-anim .leaflet-popup { transition: opacity .15s ease-out; }
+.leaflet-fade-anim .leaflet-popup { transition: opacity 150ms var(--ease-out); }
+/* El popup nace desde la punta que apunta al marcador; Leaflet ya posiciona el contenedor con transform, por eso se anima `scale` en los hijos. */
+@keyframes cr-pop { from{ opacity:0; scale:.95; } }
+/* Marcador del pH: nace en el neutro (50%) y se asienta en su valor; al refrescar el dato se desliza por la transition. */
+@keyframes cr-ph-in { from{ transform:translateX(50%); } }
+.cr-ph-marker{ position:absolute; left:0; top:0; width:100%; height:14px; pointer-events:none; transition:transform 400ms var(--ease-out); animation:cr-ph-in 450ms var(--ease-out) backwards; }
+.cr-popup .leaflet-popup-content-wrapper{ transform-origin:50% calc(100% + 20px); animation:cr-pop 160ms var(--ease-out); }
+.cr-popup .leaflet-popup-tip-container{ transform-origin:50% 100%; animation:cr-pop 160ms var(--ease-out); }
 
 /* generic helpers */
 .vis-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 @keyframes cr-pulse-red { 0%,100%{ box-shadow:0 0 0 0 rgba(192,87,70,.5);} 50%{ box-shadow:0 0 0 6px rgba(192,87,70,0);} }
 @keyframes cr-blink { 0%,100%{opacity:1;} 50%{opacity:.3;} }
 @keyframes cr-dots { 0%,80%,100%{ transform:translateY(0); opacity:.4;} 40%{ transform:translateY(-4px); opacity:1;} }
-@keyframes cr-fade-up { from{ transform:translateY(9px);} to{ transform:none;} }
+@keyframes cr-fade-up { from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
+/* `backwards`: retiene el estado inicial durante el delay y suelta el elemento al terminar (sin quedarse con un transform activo). */
+.cr-enter{ animation:cr-fade-up 250ms var(--ease-out) backwards; }
+/* Entrada escalonada de tarjetas (30–80ms entre elementos). El esqueleto de loading.tsx no entra: debe sentirse instantáneo. */
+.cr-grid>.cr-card:not(:has(.cr-skel)){ animation:cr-fade-up 260ms var(--ease-out) backwards; }
+.cr-grid>.cr-card:nth-child(2){ animation-delay:40ms; }
+.cr-grid>.cr-card:nth-child(3){ animation-delay:80ms; }
+.cr-grid>.cr-card:nth-child(4){ animation-delay:120ms; }
+.cr-grid>.cr-card:nth-child(5){ animation-delay:160ms; }
+.cr-grid>.cr-card:nth-child(6){ animation-delay:200ms; }
+.cr-grid>.cr-card:nth-child(n+7){ animation-delay:240ms; }
+/* Gráficas: la línea se traza de izquierda a derecha (pathLength=1 normaliza el largo; el hueco "2" evita el punto del cap redondo al final) y relleno, puntos y anotaciones se funden después. Solo al montar: cambiar de rango no re-anima. */
+@keyframes cr-draw { from{ stroke-dasharray:1 2; stroke-dashoffset:1; } to{ stroke-dasharray:1 2; stroke-dashoffset:0; } }
+@keyframes cr-fade { from{ opacity:0; } }
+.cr-line{ animation:cr-draw 600ms var(--ease-out) backwards; }
+.cr-fade{ animation:cr-fade 350ms var(--ease-out) backwards; }
+.cr-dot{ transition:r 120ms var(--ease-out), fill-opacity 120ms ease, stroke-width 120ms ease; }
+/* Aparición al desplazar: animación ligada al scroll (CSS nativo, sin JS), `linear` porque el scroll es el que la "escrubea" (una curva fuerte la haría saltar). Con `backwards` solo actúa mientras el elemento aún no entra en vista: lo visible al cargar no se oculta y conserva el escalonado de arriba. Sin soporte (Firefox) queda solo la entrada al montar. */
+@supports (animation-timeline: view()) {
+  @keyframes cr-reveal { from{ opacity:0; transform:translateY(24px); } }
+  .cr-grid>.cr-card:not(:has(.cr-skel)){
+    animation:cr-fade-up 260ms var(--ease-out) backwards, cr-reveal linear backwards;
+    animation-timeline:auto, view();
+    animation-range:normal, entry 0% entry 45%;
+  }
+  .cr-layer-row,.cr-mini-card{ animation:cr-reveal linear backwards; animation-timeline:view(); animation-range:entry 0% entry 60%; }
+}
 /* Esqueleto de carga (loading.tsx): shimmer suave mientras llega el dato real. */
 @keyframes cr-shimmer { 0%{ background-position:-360px 0;} 100%{ background-position:360px 0;} }
 .cr-skel{ border-radius:var(--radius-sm); background:linear-gradient(90deg,var(--surface-3) 25%,var(--surface-2) 50%,var(--surface-3) 75%); background-size:720px 100%; animation:cr-shimmer 1.4s linear infinite; }
+/* Reduced motion = menos y más suave, no cero: se conservan fundidos y color; se quitan desplazamientos, escalas y bucles. */
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
+  @keyframes cr-fade-up { from{ opacity:0; } to{ opacity:1; } }
+  @keyframes cr-pop { from{ opacity:0; } }
+  @keyframes cr-ph-in { from{ opacity:0; } }
+  @keyframes cr-draw { from{ opacity:0; } }
+  @keyframes cr-reveal { from{ opacity:0; } }
+  .cr-skel, [style*="cr-pulse-red"], [style*="cr-dots"] { animation: none !important; }
+  * { transition-property: opacity, color, background-color, border-color !important; }
 }
 
 /* ════════════════════════════════════════════════════════
@@ -147,7 +192,7 @@ html, body {
 
 /* ── Sidebar ── */
 .cr-sidebar{width:var(--sidebar-w);background:var(--sidebar);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;flex-shrink:0;transition:width .25s cubic-bezier(.4,0,.2,1);overflow:hidden;position:relative;z-index:20}
+  display:flex;flex-direction:column;flex-shrink:0;transition:width 250ms var(--ease-in-out);overflow:hidden;position:relative;z-index:20}
 .cr-sidebar.collapsed{width:var(--sidebar-w-collapsed)}
 .cr-sb-top{padding:18px 18px 10px;display:flex;align-items:center;gap:11px;min-height:70px}
 .cr-sb-titlewrap{min-width:0;opacity:1;transition:opacity .2s}
@@ -156,13 +201,13 @@ html, body {
 .cr-sb-sub{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--ink-soft);margin-top:3px;line-height:1.3;text-transform:uppercase}
 .cr-newbtn{margin:8px 14px 6px;background:var(--verde-btn);color:#fff;border:none;border-radius:11px;padding:13px;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;
   font-family:var(--font-mono);font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;transition:background .15s;white-space:nowrap}
-.cr-newbtn:hover{background:var(--verde-btn-h)}
+@media (hover:hover) and (pointer:fine){.cr-newbtn:hover{background:var(--verde-btn-h)}}
 .cr-sidebar.collapsed .cr-newbtn{padding:12px 0;margin:8px 18px}
 .cr-nav{display:flex;flex-direction:column;gap:3px;padding:12px}
 .cr-nav-item{display:flex;align-items:center;gap:13px;padding:11px 12px;border-radius:10px;border:none;background:transparent;cursor:pointer;text-decoration:none;
   color:var(--ink-soft);font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;width:100%;text-align:left;white-space:nowrap;transition:background .15s,color .15s}
 .cr-nav-item svg{flex-shrink:0}
-.cr-nav-item:hover{background:var(--surface-3);color:var(--ink)}
+@media (hover:hover) and (pointer:fine){.cr-nav-item:hover{background:var(--surface-3);color:var(--ink)}}
 .cr-nav-item.active{background:var(--sage-active);color:var(--verde)}
 :root[data-palette="nocturno"] .cr-theme-toggle{background:var(--sage-active);color:var(--verde)}
 .cr-when-dark{display:none}
@@ -179,10 +224,12 @@ html, body {
 .cr-bread{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);letter-spacing:.03em}
 .cr-bread b{color:var(--ink);font-weight:600}
 .cr-collapse{border:none;background:transparent;cursor:pointer;color:var(--ink-soft);display:grid;place-items:center;width:32px;height:32px;border-radius:8px}
-.cr-collapse:hover{background:var(--surface-3)}
+@media (hover:hover) and (pointer:fine){.cr-collapse:hover{background:var(--surface-3)}}
 .cr-hamburger{display:none;border:none;background:transparent;cursor:pointer;color:var(--ink-soft);place-items:center;width:32px;height:32px;border-radius:8px}
-.cr-hamburger:hover{background:var(--surface-3)}
-.cr-sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1500}
+@media (hover:hover) and (pointer:fine){.cr-hamburger:hover{background:var(--surface-3)}}
+.cr-sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1500;opacity:0;pointer-events:none;transition:opacity 200ms var(--ease-out)}
+.cr-sidebar-overlay.open{opacity:1;pointer-events:auto}
+.cr-collapse svg{transition:transform 250ms var(--ease-in-out)}
 .cr-sys{display:flex;align-items:center;gap:16px}
 .cr-sys-item{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);white-space:nowrap}
 .cr-bread{white-space:nowrap}
@@ -203,7 +250,7 @@ html, body {
 .cr-seg-btn{border:none;background:transparent;padding:7px 13px;border-radius:7px;font-family:var(--font-mono);font-size:12px;cursor:pointer;color:var(--ink-soft)}
 .cr-seg-btn.active{background:var(--sage-active);color:var(--verde);font-weight:600}
 .cr-btn-ghost{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:9px 15px;font-size:13px;color:var(--ink);cursor:pointer;font-weight:500;font-family:var(--font-body)}
-.cr-btn-ghost:hover{background:var(--surface-3)}
+@media (hover:hover) and (pointer:fine){.cr-btn-ghost:hover{background:var(--surface-3)}}
 
 /* ── Mapa ── */
 .cr-mapa{display:flex;flex:1;min-height:0;width:100%}
@@ -212,15 +259,15 @@ html, body {
 .cr-map-panel-head{padding:18px 20px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
 .cr-map-panel-body{padding:16px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
 .cr-map-search{position:absolute;top:16px;left:16px;width:310px;max-width:55%;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);z-index:600}
-.cr-map-search{overflow:hidden;transition:width .28s cubic-bezier(.4,0,.2,1),border-color .15s}
+.cr-map-search{overflow:hidden;transition:width 250ms var(--ease-in-out),border-color 150ms ease}
 .cr-map-search.collapsed{width:46px}
 .cr-map-search:focus-within{border-color:var(--teal)}
 .cr-map-search-btn{flex-shrink:0;width:44px;height:44px;display:grid;place-items:center;border:none;background:transparent;color:var(--ink-soft);cursor:pointer;border-radius:11px}
-.cr-map-search-btn:hover{color:var(--ink)}
+@media (hover:hover) and (pointer:fine){.cr-map-search-btn:hover{color:var(--ink)}}
 .cr-map-search-btn:focus-visible{outline-offset:-3px}
-.cr-sug{border-top:1px solid var(--border);padding:6px;display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto}
+.cr-sug{border-top:1px solid var(--border);padding:6px;display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto;transform-origin:50% 0;animation:cr-pop 160ms var(--ease-out)}
 .cr-sug-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--ink)}
-.cr-sug-item:hover{background:var(--surface-3)}
+@media (hover:hover) and (pointer:fine){.cr-sug-item:hover{background:var(--surface-3)}}
 .cr-coord{position:absolute;bottom:16px;left:16px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:11.5px;color:var(--ink-soft);box-shadow:var(--shadow);z-index:600;display:flex;align-items:center;gap:7px}
 .cr-mini-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 14px}
 .cr-layer-row{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 11px}
@@ -269,7 +316,7 @@ html, body {
 .cr-ia-thread{flex:1;overflow-y:auto;padding:20px 32px 10px;position:relative;z-index:1;display:flex;flex-direction:column;gap:20px}
 .cr-ia-user{align-self:flex-start;max-width:580px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:15px 22px}
 .cr-ia-new{display:flex;align-items:center;gap:7px;background:var(--sage-active);border:1px solid var(--sage-line);border-radius:999px;padding:8px 14px;cursor:pointer;color:var(--verde);font-family:var(--font-mono);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;transition:filter .15s}
-.cr-ia-new:hover{filter:brightness(.97)}
+@media (hover:hover) and (pointer:fine){.cr-ia-new:hover{filter:brightness(.97)}}
 .cr-ia-new:disabled{opacity:.4;cursor:default}
 .cr-ia-ai-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .cr-ia-avatar{width:30px;height:30px;border-radius:50%;background:var(--sage-active);color:var(--verde);display:grid;place-items:center;flex-shrink:0}
@@ -285,31 +332,38 @@ html, body {
 .cr-sugerencia{}
 .cr-sug-q{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;background:var(--sage-active);border:1px solid var(--sage-line);border-radius:12px;
   padding:13px 17px;cursor:pointer;color:var(--verde);font-family:var(--font-display);font-style:italic;font-size:14.5px;transition:background .15s}
-.cr-sug-q:hover{filter:brightness(.97)}
+@media (hover:hover) and (pointer:fine){.cr-sug-q:hover{filter:brightness(.97)}}
 .cr-ia-input{display:flex;gap:11px;align-items:center;padding:16px 32px 22px;position:relative;z-index:1;border-top:1px solid var(--border-2);background:var(--surface)}
 .cr-ia-input input{flex:1;border:1px solid var(--border);background:var(--surface-2);border-radius:999px;padding:14px 22px;font-size:16px;font-family:var(--font-display);font-style:italic;color:var(--ink);outline:none}
 .cr-ia-input input:focus{border-color:var(--teal)}
 .cr-ia-input button{width:46px;height:46px;border-radius:50%;border:none;background:var(--verde-btn);color:#fff;display:grid;place-items:center;cursor:pointer;flex-shrink:0;transition:background .15s}
-.cr-ia-input button:hover{background:var(--verde-btn-h)}
+@media (hover:hover) and (pointer:fine){.cr-ia-input button:hover{background:var(--verde-btn-h)}}
 .cr-ia-input button:disabled{opacity:.45;cursor:default}
 .cr-ia-aside{width:384px;flex-shrink:0;background:var(--bg);border-left:1px solid var(--border);overflow-y:auto;padding:22px}
 .cr-ia-telem{display:flex;flex-direction:column;gap:14px}
 .cr-telem-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
 .cr-telem-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .cr-ia-below{padding:22px 30px 40px}
-.cr-ia-hist{width:228px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:width .2s;overflow:hidden}
+.cr-ia-hist{width:228px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:width 250ms var(--ease-in-out);overflow:hidden}
 .cr-ia-hist.collapsed{width:56px}
 .cr-hist-toggle{display:flex;align-items:center;gap:11px;padding:18px 18px 10px;border:none;background:transparent;cursor:pointer;color:var(--verde);font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
 .cr-hist-list{padding:4px 12px;display:flex;flex-direction:column;gap:3px;overflow-y:auto}
-.cr-hist-item{display:flex;align-items:center;gap:2px;border-radius:9px;padding-right:4px}
-.cr-hist-item:hover{background:var(--surface-3)}
+.cr-hist-item{display:flex;align-items:center;gap:2px;border-radius:9px;padding-right:4px;transition:background-color 150ms ease}
+@media (hover:hover) and (pointer:fine){.cr-hist-item:hover{background:var(--surface-3)}}
 .cr-hist-item.active{background:var(--sage-active)}
 .cr-hist-open{flex:1;min-width:0;text-align:left;border:none;background:transparent;border-radius:9px;padding:10px 11px;cursor:pointer}
 .cr-hist-del{flex-shrink:0;border:none;background:transparent;color:var(--ink-faint);border-radius:7px;padding:6px;cursor:pointer;opacity:0;transition:opacity .12s,color .12s,background .12s}
-.cr-hist-item:hover .cr-hist-del,.cr-hist-del:focus-visible{opacity:1}
+.cr-hist-del:focus-visible{opacity:1}
+@media (hover:hover) and (pointer:fine){.cr-hist-item:hover .cr-hist-del{opacity:1}}
 /* Sin hover (táctil) el botón de borrar tiene que verse siempre. */
 @media (hover:none){ .cr-hist-del{opacity:.7} }
-.cr-hist-del:hover{color:var(--salmon);background:var(--surface-2)}
+@media (hover:hover) and (pointer:fine){.cr-hist-del:hover{color:var(--salmon);background:var(--surface-2)}}
+
+/* ── Feedback de pulsación ──
+   Toda superficie pulsable cede 3% bajo el dedo. Va después de las reglas base para fijar una sola transition por elemento. */
+.cr-press,.cr-newbtn,.cr-nav-item,.cr-seg-btn,.cr-btn-ghost,.cr-collapse,.cr-hamburger,.cr-map-search-btn,.cr-sug-item,.cr-ia-new,.cr-sug-q,.cr-ia-input button,.cr-hist-toggle,.cr-hist-open{
+  transition:transform 160ms var(--ease-out),background-color 150ms ease,color 150ms ease,filter 150ms ease,opacity 150ms ease}
+:is(.cr-press,.cr-newbtn,.cr-nav-item,.cr-seg-btn,.cr-btn-ghost,.cr-collapse,.cr-hamburger,.cr-map-search-btn,.cr-sug-item,.cr-ia-new,.cr-sug-q,.cr-ia-input button,.cr-hist-toggle,.cr-hist-open):active:not(:disabled){transform:scale(.97)}
 
 /* ── Responsive ── */
 @media (max-width:1180px){ .cr-card.s4{grid-column:span 6} .cr-sys-name{display:none} }
@@ -325,7 +379,7 @@ html, body {
   .cr-telem-2col{grid-template-columns:1fr 1fr}
 }
 @media (max-width:640px){
-  .cr-sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:1600}
+  .cr-sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);transform:translateX(-100%);transition:transform 300ms var(--ease-drawer);z-index:1600}
   .cr-sidebar.collapsed{width:var(--sidebar-w)}
   .cr-sidebar.collapsed .cr-sb-titlewrap,.cr-sidebar.collapsed .cr-label{opacity:1;width:auto;pointer-events:auto}
   .cr-sidebar.mobile-open{transform:translateX(0)}
