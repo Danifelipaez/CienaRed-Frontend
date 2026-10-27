@@ -12,7 +12,8 @@ export default async function MapaPage() {
       getSedimentation(),
       getHistory(1),
     ]);
-  } catch {
+  } catch (err) {
+    console.error("[mapa] backend", err);
     return <BackendError title="Mapa interactivo" />;
   }
   const estaciones = historyToEstaciones(history);

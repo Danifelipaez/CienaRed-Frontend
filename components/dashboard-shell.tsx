@@ -91,15 +91,9 @@ export function DashboardShell({
           <Botanical kind="raya" w={150} h={150} opacity={0.05} className="cr-sb-watermark" style={{ position: "absolute", right: -10, bottom: 36 }} />
           <button className="cr-nav-item cr-theme-toggle" onClick={toggleTheme}>
             <Icon name="moon" size={19} />
-            <span className="cr-label">Modo noche</span>
-          </button>
-          <button className="cr-nav-item">
-            <Icon name="settings" size={19} />
-            <span className="cr-label">Ajustes</span>
-          </button>
-          <button className="cr-nav-item">
-            <Icon name="help" size={19} />
-            <span className="cr-label">Soporte</span>
+            {/* La paleta la fija un script antes de hidratar: el texto se elige por CSS, no por estado. */}
+            <span className="cr-label cr-when-light">Modo noche</span>
+            <span className="cr-label cr-when-dark">Modo claro</span>
           </button>
         </div>
       </nav>
@@ -110,8 +104,13 @@ export function DashboardShell({
             <button className="cr-hamburger" onClick={() => setMobileOpen((o) => !o)} aria-label="Abrir menú">
               <Icon name="menu" size={18} />
             </button>
-            <button className="cr-collapse" onClick={() => setCollapsed((c) => !c)} aria-label="Plegar menú">
-              <Icon name="sliders" size={18} />
+            <button
+              className="cr-collapse"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={collapsed ? "Expandir menú" : "Plegar menú"}
+              title={collapsed ? "Expandir menú" : "Plegar menú"}
+            >
+              <Icon name="chevron" size={18} style={{ transform: collapsed ? "none" : "rotate(180deg)" }} />
             </button>
             <div className="cr-bread">
               CienaRed <Icon name="chevron" size={13} style={{ opacity: 0.4 }} /> <b>{VIEW_TITLE[view]}</b>
@@ -135,7 +134,7 @@ export function DashboardShell({
             {apis.map((a) => (
               <span key={a.id} className="cr-sys-item" title={`${a.nombre} · ${formatTooltipHeader(a.actualizado, "hour")}`}>
                 <StatusDot tone={apiTone(a.estado)} size={8} pulse={a.estado !== "ok"} />
-                {a.nombre}
+                <span className="cr-sys-name">{a.nombre}</span>
               </span>
             ))}
           </div>

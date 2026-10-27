@@ -27,7 +27,8 @@ function fmt(date: Date, timeZone: string, opts: Intl.DateTimeFormatOptions): st
 export function formatDate(t: string): string {
   const { date, timeZone } = toDateAndZone(t);
   const dia = fmt(date, timeZone, { day: "2-digit" });
-  const mesRaw = fmt(date, timeZone, { month: "short" }).replace(".", "");
+  // es-CO abrevia septiembre como "sept": se recorta a 3 letras para que todos los meses midan igual.
+  const mesRaw = fmt(date, timeZone, { month: "short" }).replace(".", "").slice(0, 3);
   return `${dia} ${mesRaw.charAt(0).toUpperCase()}${mesRaw.slice(1)}`;
 }
 

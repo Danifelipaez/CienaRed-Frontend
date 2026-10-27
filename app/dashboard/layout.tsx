@@ -18,7 +18,8 @@ async function getApiStatuses(): Promise<ApiStatus[]> {
   try {
     const data = await backendFetchAdmin<SystemStatusResponse>("/dashboard/system-status", undefined, READ_REVALIDATE);
     return data.apis;
-  } catch {
+  } catch (err) {
+    console.error("[layout] system-status", err);
     // El header muestra las pills de estado como cortesía; si el backend admin
     // no está disponible, el resto del dashboard (vistas públicas) sigue funcionando.
     return [];
@@ -29,7 +30,8 @@ async function getSnapshotAlerts(): Promise<{ cycloneAlerts: CycloneAlert[]; tor
   try {
     const snapshot = await getLatestSnapshot();
     return { cycloneAlerts: snapshot.cyclone_alerts, tormenta: snapshot.senales.tormenta };
-  } catch {
+  } catch (err) {
+    console.error("[layout] getLatestSnapshot", err);
     return { cycloneAlerts: [], tormenta: null };
   }
 }

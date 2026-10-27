@@ -15,6 +15,7 @@ import {
   type VistaClima,
 } from "./adapters";
 import { CHART_SPECS, vistaToGranularity } from "./chart-specs";
+import { buildLluviaVista } from "@/lib/lluvia";
 import { moonPhaseGlyph, moonPhaseLabel, type MoonPhaseGlyph } from "@/lib/moon";
 
 const RANGOS = ["7", "30", "90"] as const;
@@ -49,7 +50,8 @@ export function GraficasView({
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [climaVista, setClimaVista] = useState<VistaClima>("hora");
+  // El rango por defecto es 30 días: en vista horaria eso son ~720 puntos ilegibles, así que se arranca por día.
+  const [climaVista, setClimaVista] = useState<VistaClima>("dia");
 
   useEffect(() => {
     let cancelled = false;
@@ -147,18 +149,36 @@ export function GraficasView({
   const eventos = useMemo(() => semaphoreToEventos(history.semaphore), [history]);
   const luna = useMemo(() => fasesLuna(), []);
 
-  const chartsAmbiente = chartData.filter((c) => c.spec.group !== "agua");
-  const chartsAgua = chartData.filter((c) => c.spec.group === "agua");
   const vendaval = snapshot?.senales.vendaval;
   const tormenta = snapshot?.senales.tormenta;
+  const lluvia = useMemo(() => buildLluviaVista(snapshot?.senales.lluvia), [snapshot]);
 
-  function renderChartCard({ spec, series, granularity, aggregated, annotations }: (typeof chartData)[number]) {
+  // Las gráficas sin datos se resumen en un aviso en vez de ocupar filas vacías (la que trae
+  // el selector Hora/Día/7 días se queda siempre). La última tarjeta se estira para cerrar la
+  // fila de 12 columnas y no dejar huecos.
+  function bloque(grupo: (typeof chartData)[number][]) {
+    const visibles = grupo.filter((c) => c.spec.showVistaToggle || c.series.some((s) => s.data.length > 1));
+    const vacias = grupo.filter((c) => !visibles.includes(c));
+    const resto = visibles.reduce((s, c) => s + c.spec.span, 0) % 12;
+    return (
+      <>
+        {visibles.map((c, i) => renderChartCard(c, i === visibles.length - 1 && resto ? c.spec.span + 12 - resto : c.spec.span))}
+        {vacias.length > 0 && (
+          <Card label="Sin datos suficientes en esta ventana" span={12} pad={16}>
+            <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>{vacias.map((c) => c.spec.title).join(" · ")}</span>
+          </Card>
+        )}
+      </>
+    );
+  }
+
+  function renderChartCard({ spec, series, granularity, aggregated, annotations }: (typeof chartData)[number], span: number) {
     return (
       <Card
         key={spec.id}
         title={spec.title}
         label={spec.source}
-        span={spec.span}
+        span={span}
         motif={spec.motif}
         actions={
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -186,7 +206,7 @@ export function GraficasView({
             series={series}
             granularity={granularity}
             aggregated={aggregated}
-            height={spec.span === 12 ? 200 : 190}
+            height={span === 12 ? 200 : 190}
             yMin={spec.yMin}
             yMax={spec.yMax}
             area={spec.area}
@@ -229,7 +249,7 @@ export function GraficasView({
       </header>
 
       <CardGrid>
-        {chartsAmbiente.map(renderChartCard)}
+        {bloque(chartData.filter((c) => c.spec.group !== "agua"))}
 
         <Card label="Ciclo lunar — ventana de observación" span={12} pad={24}>
           <div className="cr-luna">
@@ -279,10 +299,10 @@ export function GraficasView({
           </Card>
         )}
 
-        {chartsAgua.map(renderChartCard)}
+        {bloque(chartData.filter((c) => c.spec.group === "agua"))}
 
         {vendaval && (
-          <Card title="Vendaval" label="Outlook convectivo 24-48h" span={6} icon="wind">
+          <Card title="Vendaval" label="Outlook convectivo 24-48h" span={tormenta ? 6 : 12} icon="wind">
             <MetricGrid>
               <MetricTile
                 label="Probabilidad de vendaval"
@@ -301,7 +321,7 @@ export function GraficasView({
         )}
 
         {tormenta && (
-          <Card title="Tormenta eléctrica" label="GLM — sistema convectivo activo" span={6} icon="wind" accent="var(--rojo)">
+          <Card title="Tormenta eléctrica" label="GLM — sistema convectivo activo" span={vendaval ? 6 : 12} icon="wind" accent="var(--rojo)">
             <div className="cr-event-row">
               <span style={{ marginTop: 3 }}>
                 <StatusDot tone="rojo" pulse />
@@ -315,6 +335,60 @@ export function GraficasView({
                 </p>
               </div>
             </div>
+          </Card>
+        )}
+
+        {lluvia && (
+          <Card title="Lluvia" label="Qué tan probable es que llueva" span={12} icon="droplet">
+            <div className="cr-events">
+              {lluvia.filas.map((f) => (
+                <div key={f.id} className="cr-event-row">
+                  <span style={{ marginTop: 3 }}>
+                    <StatusDot tone={f.tone === "neutral" ? "off" : f.tone} pulse={f.pulse} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                      {f.etiqueta}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                      {f.valor && (
+                        <span className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--ink)", lineHeight: 1 }}>
+                          {f.valor}
+                        </span>
+                      )}
+                      <Pill tone={f.tone} pulse={f.pulse} dot={f.pulse}>
+                        {f.texto}
+                      </Pill>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {lluvia.sistemas.length > 0 && (
+                <div className="cr-event-row">
+                  <span style={{ marginTop: 3 }}>
+                    <StatusDot tone={lluvia.afectaCgsm ? "amarillo" : "off"} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+                      Sistemas del tiempo en la región
+                    </span>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
+                      {lluvia.sistemas.map((nombre) => (
+                        <MonoChip key={nombre} tone="teal">
+                          {nombre}
+                        </MonoChip>
+                      ))}
+                      {lluvia.afectaCgsm && <Pill tone="amarillo">afecta la Ciénaga</Pill>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {lluvia.esEstimacion && (
+              <p className="mono" style={{ fontSize: 10.5, color: "var(--ink-faint)", marginTop: 14 }}>
+                Las probabilidades de 6 y 24 horas son una estimación, no una medición.
+              </p>
+            )}
           </Card>
         )}
 
@@ -375,7 +449,7 @@ export function GraficasView({
               {eventos.map((e, i) => (
                 <div key={i} className="cr-event-row">
                   <span style={{ marginTop: 3 }}>
-                    <StatusDot tone={e.sem} pulse={e.sem === "rojo"} />
+                    <StatusDot tone={e.sem} />
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>

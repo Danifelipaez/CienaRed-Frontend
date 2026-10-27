@@ -8,8 +8,25 @@ import { StatusDot, SectionLabel, MonoChip, Toggle } from "@/components/ui/primi
 import { MoonGlyph } from "@/components/ui/charts";
 import type { PuntoPesca, Especie, ZonaSedimentacion } from "@/lib/api";
 import type { EstacionSnapshot } from "@/lib/stations";
+import { moonPhaseGlyph, moonPhaseLabel } from "@/lib/moon";
+import { formatTooltipHeader } from "@/components/charts/time-format";
 
 const CR_CENTER: [number, number] = [10.86, -74.43];
+
+// Capas raster sobre el mapa. `nivel` es el zoom nativo máximo: más allá Leaflet escala la tesela.
+// - Nubes: NASA GIBS GOES-East GeoColor (abierto, sin key, ~1 km). El tiempo "default" es la imagen
+//   más reciente y GIBS responde no-cache, así que cada carga trae la última.
+// - Lluvia: Xweather radar-global vía nuestro proxy app/api/tiles/radar (inyecta la clave y cachea
+//   20 min para todos). Solo existen las 2 teselas z9 de la Ciénaga: RADAR_BOUNDS evita que Leaflet
+//   pida otras, y nivel 9 hace que las escale en vez de pedir más (cada tesela gasta cuota).
+const GIBS_NUBES =
+  "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GOES-East_ABI_GeoColor/default/default/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png";
+const RADAR_BOUNDS: [[number, number], [number, number]] = [[10.55, -75.15], [11.1, -73.9]];
+const SATELITE = {
+  nubes: { url: GIBS_NUBES, nivel: 7, opacity: 0.75, attribution: "NASA GIBS" },
+  lluvia: { url: "/api/tiles/radar/{z}/{x}/{y}", nivel: 9, opacity: 0.8, attribution: "Xweather" },
+} as const;
+type CapaSatelite = keyof typeof SATELITE;
 
 function semColor(c: string) {
   return c === "rojo" ? "#C05746" : c === "amarillo" ? "#C9981E" : "#4A7C59";
@@ -51,7 +68,7 @@ function fmt(v: number | null, unit: string) {
 
 function estacionPopupHTML(e: EstacionSnapshot) {
   return `<div style="padding:12px 14px;font-family:var(--font-body)">
-    <div class="serif" style="font-size:16px;font-weight:600;color:var(--verde);margin-bottom:8px">${e.nombre}</div>
+    <div class="serif" style="font-size:16px;font-weight:600;color:var(--verde);margin-bottom:8px">${escapeHtml(e.nombre)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:12.5px;color:var(--ink-soft)">
       <div>Temp. ambiental: <b style="color:var(--ink)">${fmt(e.tempAmbiental, "°C")}</b></div>
       <div>Humedad: <b style="color:var(--ink)">${fmt(e.humedad, "%")}</b></div>
@@ -83,12 +100,12 @@ function sedimentacionPopupHTML(z: ZonaSedimentacion) {
 function popupHTML(p: PuntoPesca) {
   return `<div style="padding:14px 16px;font-family:var(--font-body)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-      <span class="serif" style="font-size:18px;font-weight:600;color:var(--verde)">${p.nombre}</span>
+      <span class="serif" style="font-size:18px;font-weight:600;color:var(--verde)">${escapeHtml(p.nombre)}</span>
       <span class="mono" style="font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 8px;border-radius:999px;background:${semColor(p.condicion)}22;color:${semColor(p.condicion)}">${semLabel(p.condicion).toUpperCase()}</span>
     </div>
     <div style="display:flex;gap:14px;margin-bottom:10px">
-      <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Temp. sup.</div><div class="serif" style="font-size:17px;color:var(--ink)">${(p.temp ?? 0).toFixed(1)}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> °C</span></div></div>
-      <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Clorofila-a</div><div class="serif" style="font-size:17px;color:var(--ink)">${(p.clorofila ?? 0).toFixed(1)}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> mg/m³</span></div></div>
+      <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Temp. sup.</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.temp != null ? p.temp.toFixed(1) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> °C</span></div></div>
+      <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Clorofila-a</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.clorofila != null ? p.clorofila.toFixed(1) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> mg/m³</span></div></div>
       <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">Salinidad</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.salinidad != null ? p.salinidad.toFixed(1) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> PSU</span></div></div>
       <div><div class="mono" style="font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.1em">TDS</div><div class="serif" style="font-size:17px;color:var(--ink)">${p.tds != null ? p.tds.toFixed(0) : "—"}<span class="mono" style="font-size:11px;color:var(--ink-soft)"> mg/L</span></div></div>
     </div>
@@ -113,11 +130,16 @@ export default function MapaView({
   const mapRef = useRef<LeafletType.Map | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<Record<string, LeafletType.Marker>>({});
+  const satRef = useRef<Partial<Record<CapaSatelite, LeafletType.TileLayer>>>({});
+  const [nubesHora, setNubesHora] = useState<string | null>(null);
+  const [radarHora, setRadarHora] = useState<string | null>(null);
   const [center, setCenter] = useState<[number, number]>(CR_CENTER);
   const [selected, setSelected] = useState<PuntoPesca | undefined>(() =>
     puntos.find((p) => p.condicion === "rojo") ?? puntos[0]
   );
   const [layers, setLayers] = useState({
+    nubes: false,
+    lluvia: false,
     puntos: true,
     semaforo: true,
     sst: false,
@@ -128,9 +150,12 @@ export default function MapaView({
   });
   const [query, setQuery] = useState("");
   const [showSug, setShowSug] = useState(false);
-  const [variable, setVariable] = useState("temp");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [especie, setEspecie] = useState("all");
   const [faseLuna, setFaseLuna] = useState(false);
+  // Leaflet carga async: los efectos de capas/filtros esperan a que el mapa exista.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
@@ -148,17 +173,32 @@ export default function MapaView({
         maxZoom: 15,
       });
       L.control.zoom({ position: "topright" }).addTo(map);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        attribution: "© OpenStreetMap · © CARTO",
-        subdomains: "abcd",
+      // ponytail: tiles públicos de OSM (CARTO ahora exige API key). La política de
+      // uso de OSM no admite tráfico alto — pasar a un proveedor con key si crece.
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap",
         maxZoom: 19,
       }).addTo(map);
 
-      ["sst", "clorofila", "viento", "sedimentacion", "semaforo", "puntos", "estaciones"].forEach((p, i) => {
+      ["nubes", "lluvia", "sst", "clorofila", "viento", "sedimentacion", "semaforo", "puntos", "estaciones"].forEach((p, i) => {
         map.createPane("pane-" + p);
         const pane = map.getPane("pane-" + p)!;
         pane.style.transition = "opacity .3s ease";
         pane.style.zIndex = String(400 + i * 10);
+      });
+
+      // Las capas satelitales no se agregan aquí: el efecto de `layers` las monta solo al
+      // encenderlas, para no descargar teselas que nadie ve.
+      (Object.keys(SATELITE) as CapaSatelite[]).forEach((k) => {
+        satRef.current[k] = L.tileLayer(SATELITE[k].url, {
+          pane: "pane-" + k,
+          maxNativeZoom: SATELITE[k].nivel,
+          maxZoom: 15,
+          opacity: SATELITE[k].opacity,
+          attribution: SATELITE[k].attribution,
+          // minNativeZoom: si el mapa baja de z9 (pasa en producción), sigue usando las teselas z9.
+          ...(k === "lluvia" && { bounds: RADAR_BOUNDS, minNativeZoom: SATELITE.lluvia.nivel }),
+        });
       });
 
       const sstG = L.layerGroup();
@@ -182,7 +222,8 @@ export default function MapaView({
       });
       const sedG = L.layerGroup();
       sedimentacion.forEach((z) => {
-        L.polygon(z.polygon, { color: "#C4A882", weight: 1, fillColor: "#C4A882", fillOpacity: 0.4, dashArray: "4 4", pane: "pane-sedimentacion" })
+        const col = SEDIMENTACION_NIVEL_COLOR[z.nivel] ?? "#C4A882";
+        L.polygon(z.polygon, { color: col, weight: 1, fillColor: col, fillOpacity: 0.4, dashArray: "4 4", pane: "pane-sedimentacion" })
           .bindPopup(sedimentacionPopupHTML(z), { className: "cr-popup", closeButton: true })
           .addTo(sedG);
       });
@@ -225,6 +266,7 @@ export default function MapaView({
         setCenter([c.lat, c.lng]);
       });
       mapRef.current = map;
+      setReady(true);
       setTimeout(() => map.invalidateSize(), 60);
     });
 
@@ -245,8 +287,40 @@ export default function MapaView({
         pane.style.opacity = on ? "1" : "0";
         pane.style.pointerEvents = on ? "auto" : "none";
       }
+      const sat = satRef.current[k as CapaSatelite];
+      if (sat) {
+        if (on) sat.addTo(map);
+        else sat.remove();
+      }
     });
-  }, [layers]);
+  }, [layers, ready]);
+
+  // GIBS informa en un header la hora real de la imagen "default"; se muestra junto a la capa
+  // para que el usuario sepa de cuándo es la imagen de nubes que ve.
+  useEffect(() => {
+    fetch(GIBS_NUBES.replace("{z}/{y}/{x}", "0/0/0"), { method: "HEAD" })
+      .then((r) => r.headers.get("layer-time-actual"))
+      .then((t) => t && setNubesHora(t))
+      .catch(() => {});
+  }, []);
+
+  // Hora del radar: sale de una tesela que el mapa pide igual al encender la capa (misma caché),
+  // así que no gasta cuota extra. Solo se consulta si alguien enciende la capa.
+  useEffect(() => {
+    if (!layers.lluvia || radarHora) return;
+    fetch("/api/tiles/radar/9/150/240", { method: "HEAD" })
+      .then((r) => r.headers.get("x-radar-hora"))
+      .then((t) => t && setRadarHora(new Date(t).toISOString()))
+      .catch(() => {});
+  }, [layers.lluvia, radarHora]);
+
+  // Filtro de especie: atenúa los marcadores que no la tienen en vez de ocultarlos.
+  useEffect(() => {
+    Object.entries(markerRef.current).forEach(([id, m]) => {
+      const p = puntos.find((x) => x.id === id);
+      m.setOpacity(especie === "all" || p?.especies.includes(especie) ? 1 : 0.25);
+    });
+  }, [especie, ready, puntos]);
 
   useEffect(() => {
     Object.entries(markerRef.current).forEach(([id, m]) => {
@@ -275,8 +349,23 @@ export default function MapaView({
   }
 
   const especiesFiltradas = especie === "all" ? puntos : puntos.filter((p) => p.especies.includes(especie));
+  const fase = moonPhaseGlyph(new Date());
 
   const capas = [
+    {
+      id: "nubes",
+      icon: "cloud",
+      nombre: "Nubes (satélite)",
+      sub: `GOES-East · ${nubesHora ? formatTooltipHeader(nubesHora, "hour") : "cada 10 min"}`,
+      tone: "teal",
+    },
+    {
+      id: "lluvia",
+      icon: "droplet",
+      nombre: "Lluvia (radar)",
+      sub: `Xweather · ${radarHora ? formatTooltipHeader(radarHora, "hour") : "cada 20 min"}`,
+      tone: "teal",
+    },
     { id: "sst", icon: "thermometer", nombre: "Temp. superficial", sub: "NASA MODIS", tone: "rojo" },
     { id: "clorofila", icon: "leaf", nombre: "Clorofila-a", sub: "Copernicus Marine", tone: "teal" },
     { id: "viento", icon: "wind", nombre: "Viento", sub: "Reporte comunitario", tone: "teal" },
@@ -290,26 +379,64 @@ export default function MapaView({
     <div className="cr-mapa">
       <div className="cr-mapa-canvas">
         <div ref={elRef} style={{ position: "absolute", inset: 0 }} />
-        <div className="cr-map-search">
-          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 12px", height: 44 }}>
-            <span style={{ color: "var(--ink-soft)", display: "flex" }}>
+        {/* Colapsada es solo la lupa; al abrirse se expande hacia la derecha (transición de width en CSS).
+            Se vuelve a plegar al perder el foco si no hay texto. */}
+        <div className={"cr-map-search" + (searchOpen ? "" : " collapsed")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, paddingRight: 12, height: 44 }}>
+            <button
+              type="button"
+              className="cr-map-search-btn"
+              aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar punto de pesca"}
+              aria-expanded={searchOpen}
+              // Evita que el input pierda el foco antes del click (si no, el blur la pliega y el click la reabre).
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (searchOpen) {
+                  setSearchOpen(false);
+                  setQuery("");
+                  setShowSug(false);
+                  searchRef.current?.blur();
+                } else {
+                  setSearchOpen(true);
+                  searchRef.current?.focus();
+                }
+              }}
+            >
               <Icon name="search" size={17} />
-            </span>
+            </button>
             <input
+              ref={searchRef}
+              tabIndex={searchOpen ? 0 : -1}
+              onBlur={() => {
+                if (!query) setSearchOpen(false);
+              }}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setShowSug(true);
               }}
               onFocus={() => setShowSug(true)}
+              // Enter va a la primera coincidencia; Escape cierra la lista y, sin texto, pliega la barra.
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && sugerencias[0]) goTo(sugerencias[0]);
+                if (e.key === "Escape") {
+                  setShowSug(false);
+                  if (!query) e.currentTarget.blur();
+                }
+              }}
               placeholder="Buscar punto de pesca…"
+              aria-label="Buscar punto de pesca"
+              // El foco se marca en el contenedor (.cr-map-search:focus-within).
               style={{ border: "none", outline: "none", background: "transparent", flex: 1, fontSize: 14, color: "var(--ink)", fontFamily: "var(--font-body)" }}
             />
             {query && (
               <button
+                aria-label="Limpiar búsqueda"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   setQuery("");
                   setShowSug(false);
+                  searchRef.current?.focus();
                 }}
                 style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--ink-faint)", display: "flex" }}
               >
@@ -350,18 +477,6 @@ export default function MapaView({
         </div>
 
         <div className="cr-map-panel-body">
-          <div className="cr-mini-card">
-            <SectionLabel>Ventana de observación</SectionLabel>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7 }}>
-              <span style={{ color: "var(--verde)", display: "flex" }}>
-                <Icon name="calendar" size={16} />
-              </span>
-              <span className="mono" style={{ fontSize: 13, color: "var(--ink)" }}>
-                Últimos 30 días
-              </span>
-            </div>
-          </div>
-
           <SectionLabel style={{ margin: "4px 0 2px" }}>Capas de datos</SectionLabel>
           {capas.map((c) => (
             <div key={c.id} className="cr-layer-row">
@@ -386,14 +501,6 @@ export default function MapaView({
 
           <SectionLabel style={{ margin: "8px 0 2px" }}>Filtros</SectionLabel>
           <div className="cr-mini-card" style={{ display: "grid", gap: 12 }}>
-            <label className="cr-field">
-              <span className="mono cr-field-lbl">Variable ambiental</span>
-              <select value={variable} onChange={(e) => setVariable(e.target.value)} className="cr-select">
-                <option value="temp">Temperatura superficial</option>
-                <option value="clorofila">Clorofila-a</option>
-                <option value="viento">Viento</option>
-              </select>
-            </label>
             <label className="cr-field">
               <span className="mono cr-field-lbl">Especie objetivo</span>
               <select value={especie} onChange={(e) => setEspecie(e.target.value)} className="cr-select">
@@ -420,9 +527,9 @@ export default function MapaView({
                 style={{ fontSize: 11.5, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 8, background: "var(--surface-3)", padding: "7px 10px", borderRadius: 8 }}
               >
                 <svg width="18" height="18" viewBox="0 0 22 22">
-                  <MoonGlyph phase="full" size={18} active />
+                  <MoonGlyph phase={fase} size={18} active />
                 </svg>
-                Luna llena · mareas vivas
+                Luna {moonPhaseLabel(fase).toLowerCase()} · {fase === "new" || fase === "full" ? "mareas vivas" : "mareas muertas"}
               </div>
             )}
             {especie !== "all" && (
@@ -442,8 +549,8 @@ export default function MapaView({
                 </span>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "2px 0 9px" }}>
-                <MonoChip tone="teal">{(selected.temp ?? 0).toFixed(1)} °C</MonoChip>
-                <MonoChip>{(selected.clorofila ?? 0).toFixed(1)} mg/m³</MonoChip>
+                {selected.temp != null && <MonoChip tone="teal">{selected.temp.toFixed(1)} °C</MonoChip>}
+                {selected.clorofila != null && <MonoChip>{selected.clorofila.toFixed(1)} mg/m³</MonoChip>}
                 {selected.tds != null && <MonoChip>{selected.tds.toFixed(0)} mg/L TDS</MonoChip>}
                 <MonoChip tone="sediment">{selected.especies.join(" · ")}</MonoChip>
               </div>
