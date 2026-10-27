@@ -66,7 +66,7 @@ export function DashboardShell({
 
   return (
     <div className="cr-app">
-      {mobileOpen && <div className="cr-sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+      <div className={"cr-sidebar-overlay" + (mobileOpen ? " open" : "")} onClick={() => setMobileOpen(false)} aria-hidden="true" />
       <nav className={"cr-sidebar" + (collapsed ? " collapsed" : "") + (mobileOpen ? " mobile-open" : "")}>
         <div className="cr-sb-top">
           <SealLogo size={collapsed ? 40 : 42} />

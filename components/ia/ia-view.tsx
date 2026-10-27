@@ -87,7 +87,7 @@ function TypingDots() {
 
 function IAMessageUser({ text }: { text: string }) {
   return (
-    <div className="cr-ia-user" style={{ animation: "cr-fade-up .3s ease" }}>
+    <div className="cr-ia-user cr-enter">
       <p className="serif" style={{ margin: 0, fontStyle: "italic", fontSize: 15.5, lineHeight: 1.5, color: "var(--ink)" }}>
         {text}
       </p>
@@ -97,7 +97,7 @@ function IAMessageUser({ text }: { text: string }) {
 
 function AIBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="cr-ia-ai" style={{ animation: "cr-fade-up .4s ease both" }}>
+    <div className="cr-ia-ai cr-enter">
       <div className="cr-ia-ai-head">
         <span className="cr-ia-avatar">
           <Icon name="bot" size={15} />
@@ -131,7 +131,7 @@ function AssistantAnswer({
       {parrafos.map(
         (p, i) =>
           showBlock(i) && (
-            <div key={i} style={{ animation: "cr-fade-up .4s ease" }}>
+            <div key={i} className="cr-enter">
               {p.tipo === "texto" && p.html && <p className="cr-ia-p" dangerouslySetInnerHTML={renderRich(p.html)} />}
               {p.tipo === "datos" && p.items && (
                 <div className="cr-cite">
@@ -164,7 +164,7 @@ function AssistantAnswer({
           )
       )}
       {showSuggestion && response.sugerencia && showBlock(parrafos.length) && (
-        <div className="cr-sugerencia" style={{ animation: "cr-fade-up .4s ease" }}>
+        <div className="cr-sugerencia cr-enter">
           <SectionLabel style={{ marginBottom: 7 }}>Próxima pregunta sugerida</SectionLabel>
           <button className="cr-sug-q" onClick={() => onAsk(response.sugerencia!)}>
             <span>{response.sugerencia}</span>
@@ -360,7 +360,8 @@ export function IAView() {
       <div className="cr-ia-thread" ref={scrollRef}>
         {turns.length === 0 && (
           <div
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "48px 20px", textAlign: "center", color: "var(--ink-soft)", animation: "cr-fade-up .4s ease" }}
+            className="cr-enter"
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "48px 20px", textAlign: "center", color: "var(--ink-soft)" }}
           >
             <span style={{ color: "var(--verde-sem)", opacity: 0.6 }}>
               <Icon name="sprout" size={38} />

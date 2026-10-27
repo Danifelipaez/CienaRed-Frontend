@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/icon";
 import { Card, CardGrid } from "@/components/ui/card";
 import { MetricGrid, MetricTile, MonoChip, nivelTone, Pill, StatusDot, TrendBadge, VENDAVAL_LABEL } from "@/components/ui/primitives";
-import { TimeSeriesChart, ScatterChart, MoonGlyph } from "@/components/ui/charts";
+import { TimeSeriesChart, ScatterChart, MoonGlyph, PhGauge } from "@/components/ui/charts";
 import type { DashboardSnapshot, HistoryResponse } from "@/lib/api";
 import {
   satelliteToTempSeries,
@@ -255,8 +255,8 @@ export function GraficasView({
             {luna.map((f, i) => (
               <div
                 key={i}
-                className="cr-luna-node"
-                style={{ left: `${(i / (luna.length - 1)) * 100}%`, opacity: f.futura ? 0.5 : 1 }}
+                className="cr-luna-node cr-fade"
+                style={{ left: `${(i / (luna.length - 1)) * 100}%`, opacity: f.futura ? 0.5 : 1, animationDelay: `${i * 40}ms` }}
               >
                 <svg width="26" height="26" viewBox="0 0 22 22" style={{ background: "var(--surface)", borderRadius: "50%" }}>
                   <MoonGlyph phase={f.glyph} size={22} active={f.activa} />
@@ -274,8 +274,10 @@ export function GraficasView({
 
         {snapshot && (
           <Card title="Calidad del agua" label="Sensores IoT — lectura actual" span={12} icon="droplet" motif="mangle">
+            <div style={{ marginBottom: 26 }}>
+              <PhGauge value={snapshot.water.ph} />
+            </div>
             <MetricGrid>
-              <MetricTile label="pH" value={snapshot.water.ph ?? "—"} />
               <MetricTile label="Temp. del agua" value={snapshot.water.temperature_c ?? "—"} unit="°C" />
               <MetricTile label="Conductividad" value={snapshot.water.conductivity_mscm ?? "—"} unit="mS/cm" />
               <MetricTile

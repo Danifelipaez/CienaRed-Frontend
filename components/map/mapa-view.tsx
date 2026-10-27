@@ -183,7 +183,7 @@ export default function MapaView({
       ["nubes", "lluvia", "sst", "clorofila", "viento", "sedimentacion", "semaforo", "puntos", "estaciones"].forEach((p, i) => {
         map.createPane("pane-" + p);
         const pane = map.getPane("pane-" + p)!;
-        pane.style.transition = "opacity .3s ease";
+        pane.style.transition = "opacity 250ms var(--ease-out)";
         pane.style.zIndex = String(400 + i * 10);
       });
 
@@ -540,7 +540,7 @@ export default function MapaView({
           </div>
 
           {selected && (
-            <div className="cr-notes" style={{ animation: "cr-fade-up .3s ease" }}>
+            <div className="cr-notes cr-enter">
               <SectionLabel>Notas del punto seleccionado</SectionLabel>
               <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "7px 0 4px" }}>
                 <StatusDot tone={selected.condicion} pulse={selected.condicion === "rojo"} />

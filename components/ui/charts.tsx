@@ -3,6 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 // Ruta relativa (no "@/"): vitest no tiene el alias y charts.test.ts importa este archivo.
 import { formatAxisTick, formatTooltipHeader, type ChartGranularity } from "../charts/time-format";
+import { Pill } from "./primitives";
 
 export type SeriesPoint = { t: string; v: number };
 export type MultiSeries = { label: string; color: string; data: SeriesPoint[] };
@@ -174,8 +175,18 @@ export function TimeSeriesChart({
             : null;
           return (
             <g key={si}>
-              {areaP && <path d={areaP} fill={s.color} fillOpacity="0.1" />}
-              <path d={line} fill="none" stroke={s.color} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+              {areaP && <path className="cr-fade" style={{ animationDelay: `${si * 60 + 200}ms` }} d={areaP} fill={s.color} fillOpacity="0.1" />}
+              <path
+                className="cr-line"
+                pathLength={1}
+                style={{ animationDelay: `${si * 60}ms` }}
+                d={line}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="2.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </g>
           );
         })}
@@ -186,7 +197,7 @@ export function TimeSeriesChart({
           const x = X(ci),
             y = Y(pt.v);
           return (
-            <g key={i}>
+            <g key={i} className="cr-fade" style={{ animationDelay: "450ms" }}>
               <circle cx={x} cy={y} r="3.5" fill={series[a.seriesIndex].color} stroke="var(--surface)" strokeWidth="1.5" />
               <text x={x} y={y - 10} textAnchor="middle" className="mono" fontSize="10" fill="var(--teal)" fontWeight="600">
                 {a.label}
@@ -332,6 +343,8 @@ export function ScatterChart({
           <line key={i} x1={padL} x2={w - padR} y1={padT + ih * g} y2={padT + ih * g} stroke="var(--border)" strokeDasharray="2 5" />
         ))}
         <line
+          className="cr-fade"
+          style={{ animationDelay: "250ms" }}
           x1={X(xmn)}
           y1={Y(slope * xmn + intc)}
           x2={X(xmx)}
@@ -343,6 +356,8 @@ export function ScatterChart({
         {data.map((d, i) => (
           <circle
             key={i}
+            className="cr-dot cr-fade"
+            style={{ animationDelay: `${Math.min(i, 12) * 25}ms` }}
             cx={X(xs[i])}
             cy={Y(ys[i])}
             r={hover === i ? "5.5" : "4"}
@@ -460,5 +475,111 @@ export function MoonGlyph({ phase, size = 22, active }: { phase: "new" | "first"
         fill={c}
       />
     </g>
+  );
+}
+
+const PH_MAX = 14;
+// ponytail: umbral fijo típico de aguas costeras/estuarinas; si el proyecto define otro criterio, cambiar solo esta constante.
+export const PH_NORMAL = [6.5, 8.5] as const;
+// Escala clásica de indicador universal (ácido → neutro → básico) con los tokens semánticos del tema.
+const PH_GRADIENT =
+  "linear-gradient(90deg, var(--rojo) 0%, var(--salmon) 21%, var(--amarillo) 36%, var(--verde-sem) 50%, var(--teal) 64%, #7A66B0 100%)";
+
+export function phStatus(ph: number): { label: string; tone: "verde" | "amarillo" | "rojo" } {
+  const [lo, hi] = PH_NORMAL;
+  if (ph >= lo && ph <= hi) return { label: "Dentro del rango normal", tone: "verde" };
+  const lejos = ph < lo - 1 || ph > hi + 1;
+  return { label: `${lejos ? "Muy" : "Ligeramente"} ${ph < lo ? "ácido" : "básico"}`, tone: lejos ? "rojo" : "amarillo" };
+}
+
+/** Barra lineal 0–14 con degradado; el valor es un punto sobre la escala (no un progreso) y el marco marca el rango normal. */
+export function PhGauge({ value }: { value: number | null }) {
+  const status = value == null ? null : phStatus(value);
+  const shown = value == null ? null : +value.toFixed(2);
+  const pct = value == null ? 0 : (Math.min(PH_MAX, Math.max(0, value)) / PH_MAX) * 100;
+  const [lo, hi] = PH_NORMAL;
+  const end = (n: string, t: string, align: "left" | "center" | "right") => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center", gap: 1 }}>
+      <span className="serif" style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", lineHeight: 1 }}>{n}</span>
+      <span className="mono" style={{ fontSize: 10, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--ink-faint)" }}>{t}</span>
+    </div>
+  );
+  return (
+    <div
+      role="img"
+      aria-label={shown == null ? "pH sin lectura" : `pH ${shown} en una escala de 0 a 14: ${status!.label}`}
+      style={{ maxWidth: 560 }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+          pH
+        </span>
+        {status ? <Pill tone={status.tone} dot>{status.label}</Pill> : <Pill>Sin lectura</Pill>}
+      </div>
+
+      <div style={{ position: "relative", margin: "38px 12px 0" }}>
+        <div style={{ height: 14, borderRadius: 999, background: PH_GRADIENT }} />
+        <span
+          style={{
+            position: "absolute",
+            left: `${(lo / PH_MAX) * 100}%`,
+            width: `${((hi - lo) / PH_MAX) * 100}%`,
+            top: -4,
+            bottom: -4,
+            border: "2px solid var(--ink)",
+            borderRadius: 7,
+            opacity: 0.55,
+          }}
+        />
+        {shown != null && (
+          // translateX(%) del wrapper (ancho = pista) mueve bubble y punto juntos sin animar `left`.
+          <div className="cr-ph-marker" style={{ transform: `translateX(${pct}%)` }}>
+            <span
+              className="mono"
+              style={{
+                position: "absolute",
+                left: 0,
+                bottom: "calc(100% + 12px)",
+                transform: "translateX(-50%)",
+                background: "var(--ink)",
+                color: "var(--surface)",
+                borderRadius: 8,
+                padding: "3px 9px",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {shown}
+              <span style={{ position: "absolute", left: "50%", bottom: -3, width: 8, height: 8, background: "var(--ink)", transform: "translateX(-50%) rotate(45deg)" }} />
+            </span>
+            <span
+              style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: "var(--surface)",
+                border: "3px solid var(--ink)",
+                boxShadow: "0 0 0 2px var(--surface), 0 2px 6px rgba(0,0,0,.35)",
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", margin: "14px 0 0" }}>
+        {end("0", "ácido extremo", "left")}
+        {end("7", "neutro", "center")}
+        {end("14", "básico extremo", "right")}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 11.5, color: "var(--ink-soft)" }}>
+        <span style={{ width: 16, height: 10, border: "2px solid var(--ink)", borderRadius: 4, opacity: 0.55 }} />
+        Rango normal {lo} – {hi}
+      </div>
+    </div>
   );
 }
