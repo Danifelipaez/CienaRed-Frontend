@@ -16,6 +16,7 @@ import {
 } from "./adapters";
 import { CHART_SPECS, vistaToGranularity } from "./chart-specs";
 import { buildLluviaVista } from "@/lib/lluvia";
+import { AvisosCard } from "./avisos-card";
 import { moonPhaseGlyph, moonPhaseLabel, type MoonPhaseGlyph } from "@/lib/moon";
 
 const RANGOS = ["7", "30", "90"] as const;
@@ -302,6 +303,8 @@ export function GraficasView({
         )}
 
         {bloque(chartData.filter((c) => c.spec.group === "agua"))}
+
+        {snapshot && <AvisosCard avisos={snapshot.senales.avisos} />}
 
         {vendaval && (
           <Card title="Vendaval" label="Outlook convectivo 24-48h" span={tormenta ? 6 : 12} icon="wind">

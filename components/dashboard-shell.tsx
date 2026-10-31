@@ -7,7 +7,8 @@ import { Icon } from "@/components/ui/icon";
 import { Botanical, SealLogo } from "@/components/ui/botanical";
 import { Pill, StatusDot } from "@/components/ui/primitives";
 import { formatTooltipHeader } from "@/components/charts/time-format";
-import type { ApiStatus, CycloneAlert, TormentaSignal } from "@/lib/api";
+import type { ApiStatus, AvisosSignal, CycloneAlert, TormentaSignal } from "@/lib/api";
+import { avisosPill, buildAvisosVista } from "@/lib/avisos";
 
 const NAV = [
   { id: "mapa", icon: "map", label: "Mapa" },
@@ -43,13 +44,17 @@ export function DashboardShell({
   apis,
   cycloneAlerts = [],
   tormenta = null,
+  avisos = null,
   children,
 }: {
   apis: ApiStatus[];
   cycloneAlerts?: CycloneAlert[];
   tormenta?: TormentaSignal | null;
+  avisos?: AvisosSignal | null;
   children: React.ReactNode;
 }) {
+  const avisosVista = buildAvisosVista(avisos);
+  const pillAvisos = avisosPill(avisosVista);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [prevPathname, setPrevPathname] = useState<string | null>(null);
@@ -123,6 +128,13 @@ export function DashboardShell({
                   Tormenta desde el {tormenta.rumbo} · ETA {tormenta.eta_min} min
                 </span>
               </Pill>
+            )}
+            {pillAvisos && avisosVista && (
+              <Link href="/dashboard/graficas#avisos" style={{ textDecoration: "none" }}>
+                <Pill tone={pillAvisos.tone} dot pulse={pillAvisos.tone === "rojo"}>
+                  <span title={[...avisosVista.altos, ...avisosVista.medios].map((a) => a.titulo).join(" · ")}>{pillAvisos.texto}</span>
+                </Pill>
+              </Link>
             )}
             {cycloneAlerts.length > 0 && (
               <Pill tone="rojo" dot pulse>
