@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Aviso, AvisosSignal } from "./api";
-import { avisosPill, buildAvisosVista } from "./avisos";
+import { avisosPill, buildAvisosVista, etiquetaAviso } from "./avisos";
 
 const aviso = (over: Partial<Aviso> = {}): Aviso => ({
   tipo: "viento_fuerte",
@@ -41,6 +41,14 @@ describe("buildAvisosVista", () => {
   it("devuelve null sin dato (backend viejo o proceso recién arrancado)", () => {
     expect(buildAvisosVista(undefined)).toBeNull();
     expect(buildAvisosVista(null)).toBeNull();
+  });
+});
+
+describe("etiquetaAviso", () => {
+  it("no dice 'enviado' y no llama 'posible' a una alerta oficial", () => {
+    expect(etiquetaAviso(aviso())).toBe("confirmado");
+    expect(etiquetaAviso(aviso({ nivel: "medio" }))).toBe("posible");
+    expect(etiquetaAviso(aviso({ nivel: "medio", tipo: "ideam_mar" }))).toBe("alerta oficial");
   });
 });
 

@@ -26,10 +26,18 @@ export function buildAvisosVista(av: AvisosSignal | null | undefined): AvisosVis
   };
 }
 
+/** "push" solo dice que el aviso califica para WhatsApp, no que se haya enviado (dedup, fallas,
+ * o el backend público que no envía): por eso "confirmado", nunca "enviado". Las alertas del
+ * IDEAM de nivel medio son oficiales (amarillas), no "posibles". */
+export function etiquetaAviso(a: Aviso): string {
+  if (a.nivel === "alto") return "confirmado";
+  return a.tipo.startsWith("ideam") ? "alerta oficial" : "posible";
+}
+
 /** Texto de la pastilla del encabezado; null si no hay nada que mostrar. */
 export function avisosPill(v: AvisosVista | null): { texto: string; tone: "rojo" | "amarillo" } | null {
   if (!v) return null;
   if (v.altos.length) return { texto: v.altos.length === 1 ? v.altos[0].titulo : `${v.altos.length} avisos del tiempo`, tone: "rojo" };
-  if (v.medios.length) return { texto: v.medios.length === 1 ? v.medios[0].titulo : `${v.medios.length} avisos posibles`, tone: "amarillo" };
+  if (v.medios.length) return { texto: v.medios.length === 1 ? v.medios[0].titulo : `${v.medios.length} avisos para estar atento`, tone: "amarillo" };
   return null;
 }

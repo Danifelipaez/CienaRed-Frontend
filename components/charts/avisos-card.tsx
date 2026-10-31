@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { MonoChip, Pill, StatusDot } from "@/components/ui/primitives";
 import { formatTooltipHeader } from "./time-format";
 import type { AvisosSignal } from "@/lib/api";
-import { buildAvisosVista } from "@/lib/avisos";
+import { buildAvisosVista, etiquetaAviso } from "@/lib/avisos";
 
 const mono = { fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: ".08em" } as const;
 
@@ -26,7 +26,7 @@ export function AvisosCard({ avisos }: { avisos: AvisosSignal | null | undefined
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{a.titulo}</span>
-                  <Pill tone={a.nivel === "alto" ? "rojo" : "amarillo"}>{a.push ? "enviado por WhatsApp" : "posible"}</Pill>
+                  <Pill tone={a.nivel === "alto" ? "rojo" : "amarillo"}>{etiquetaAviso(a)}</Pill>
                 </div>
                 <p style={{ margin: "3px 0 0", fontSize: 12.5, lineHeight: 1.45, color: "var(--ink-soft)" }}>{a.mensaje}</p>
                 <span className="mono" style={{ ...mono, textTransform: "none", letterSpacing: 0 }}>
