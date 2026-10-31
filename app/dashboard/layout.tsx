@@ -4,6 +4,7 @@ import {
   getLatestSnapshot,
   READ_REVALIDATE,
   type ApiStatus,
+  type AvisosSignal,
   type CycloneAlert,
   type SystemStatusResponse,
   type TormentaSignal,
@@ -26,20 +27,24 @@ async function getApiStatuses(): Promise<ApiStatus[]> {
   }
 }
 
-async function getSnapshotAlerts(): Promise<{ cycloneAlerts: CycloneAlert[]; tormenta: TormentaSignal | null }> {
+async function getSnapshotAlerts(): Promise<{
+  cycloneAlerts: CycloneAlert[];
+  tormenta: TormentaSignal | null;
+  avisos: AvisosSignal | null;
+}> {
   try {
     const snapshot = await getLatestSnapshot();
-    return { cycloneAlerts: snapshot.cyclone_alerts, tormenta: snapshot.senales.tormenta };
+    return { cycloneAlerts: snapshot.cyclone_alerts, tormenta: snapshot.senales.tormenta, avisos: snapshot.senales.avisos ?? null };
   } catch (err) {
     console.error("[layout] getLatestSnapshot", err);
-    return { cycloneAlerts: [], tormenta: null };
+    return { cycloneAlerts: [], tormenta: null, avisos: null };
   }
 }
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [apis, { cycloneAlerts, tormenta }] = await Promise.all([getApiStatuses(), getSnapshotAlerts()]);
+  const [apis, { cycloneAlerts, tormenta, avisos }] = await Promise.all([getApiStatuses(), getSnapshotAlerts()]);
   return (
-    <DashboardShell apis={apis} cycloneAlerts={cycloneAlerts} tormenta={tormenta}>
+    <DashboardShell apis={apis} cycloneAlerts={cycloneAlerts} tormenta={tormenta} avisos={avisos}>
       {children}
     </DashboardShell>
   );

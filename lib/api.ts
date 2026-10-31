@@ -286,12 +286,66 @@ export interface LluviaSignal {
   sinoptico: LluviaSinoptico | null;
 }
 
+// Avisos del tiempo (backend app/services/avisos.py, docs/AVISOS_CLIMA.md). "alto" = confirmado
+// (consenso de modelos o alerta oficial) y enviado por WhatsApp; "medio" = posible, solo panel.
+export type AvisoTipo =
+  | "viento_fuerte"
+  | "lluvia_fuerte"
+  | "oleaje"
+  | "frente_frio"
+  | "ciclon"
+  | "temporada"
+  | "ideam_mar"
+  | "ideam_cuenca";
+
+export interface Aviso {
+  tipo: AvisoTipo;
+  nivel: "alto" | "medio";
+  titulo: string;
+  mensaje: string; // mismo texto que recibe el pescador por WhatsApp
+  fuente: string;
+  desde: string | null;
+  clave: string;
+  push: boolean;
+}
+
+export interface EnsoEstado {
+  estado: string; // texto del CPC, p.ej. "El Niño Advisory"
+  fase: "el_nino" | "la_nina" | "neutral";
+  vigente: boolean;
+  terminando?: boolean; // "Final ... Advisory"
+  sinopsis: string;
+}
+
+export interface Temporada {
+  actual: string;
+  proxima: string;
+  proxima_inicio: string;
+  proxima_cuando: string;
+  dias_para_proxima: number;
+  que_esperar: string;
+  enso: EnsoEstado | null;
+  efecto_enso: string | null;
+}
+
+// Fuentes que no se pudieron revisar: el panel debe decirlo, nunca mostrar "sin avisos" a secas.
+export type AvisoFuente = "viento" | "lluvia" | "oleaje" | "ciclon" | "frente_frio" | "enso" | "ideam";
+
+export interface AvisosSignal {
+  vigentes: Aviso[];
+  temporada: Temporada;
+  sin_revisar: AvisoFuente[];
+  horas?: number; // ventana revisada (AVISO_HORAS del backend)
+  actualizado: string;
+}
+
 export interface Senales {
   anoxia: AnoxiaSignal;
   pulso_agua_dulce: PulsoAguaDulce | null;
   vendaval: VendavalSignal | null;
   tormenta: TormentaSignal | null;
   lluvia?: LluviaSignal | null; // ausente en backends viejos
+  avisos?: AvisosSignal | null; // ausente en backends viejos; null si el proceso aún no calculó
 }
 
 export interface DashboardSnapshot {
