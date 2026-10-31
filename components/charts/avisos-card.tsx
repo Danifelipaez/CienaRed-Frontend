@@ -9,8 +9,9 @@ const mono = { fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercas
 // Avisos del tiempo (backend app/services/avisos.py). Muestra el mismo texto que llega por WhatsApp.
 export function AvisosCard({ avisos }: { avisos: AvisosSignal | null | undefined }) {
   const v = buildAvisosVista(avisos);
+  const horas = avisos?.horas ?? 36; // backends previos a `horas` usaban 36
   return (
-    <Card title="Avisos del tiempo" label="Consenso de modelos · IDEAM · NOAA — próximas 36 h" span={12} icon="wind">
+    <Card title="Avisos del tiempo" label={`Consenso de modelos · IDEAM · NOAA — próximas ${horas} h`} span={12} icon="wind">
       <span id="avisos" />
       {!v || !avisos ? (
         <p style={{ margin: 0, fontSize: 13, color: "var(--ink-soft)" }}>
@@ -42,7 +43,7 @@ export function AvisosCard({ avisos }: { avisos: AvisosSignal | null | undefined
                 <StatusDot tone={v.sinRevisar.length ? "amarillo" : "verde"} />
               </span>
               <span style={{ fontSize: 13.5, color: "var(--ink)" }}>
-                Sin avisos para las próximas 36 horas{v.sinRevisar.length ? " en lo que se pudo revisar" : ""}.
+                Sin avisos para las próximas {horas} horas{v.sinRevisar.length ? " en lo que se pudo revisar" : ""}.
               </span>
             </div>
           )}

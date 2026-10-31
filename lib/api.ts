@@ -313,6 +313,7 @@ export interface EnsoEstado {
   estado: string; // texto del CPC, p.ej. "El Niño Advisory"
   fase: "el_nino" | "la_nina" | "neutral";
   vigente: boolean;
+  terminando?: boolean; // "Final ... Advisory"
   sinopsis: string;
 }
 
@@ -334,6 +335,7 @@ export interface AvisosSignal {
   vigentes: Aviso[];
   temporada: Temporada;
   sin_revisar: AvisoFuente[];
+  horas?: number; // ventana revisada (AVISO_HORAS del backend)
   actualizado: string;
 }
 
